@@ -51,6 +51,7 @@ namespace ChloesManorMod
                 return;
             }
 
+            manorProperty.Price = 150000;
 
             Transform parentTransform = spawnedInstanceRoot.transform;
             ManorGate manorGate = manorProperty.GetComponentInChildren<ManorGate>();
