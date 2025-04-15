@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace ChloesManorMod.Patches // Your namespace
 {
+    /*
 
     [HarmonyPatch(typeof(DeliveryInstance), nameof(DeliveryInstance.SetStatus))]
     static class DeliveryInstance_SetStatus_Patch
@@ -129,5 +130,5 @@ namespace ChloesManorMod.Patches // Your namespace
              MelonLogger.Msg($"   Setting position to (0, -100, 0)...");
              MelonLogger.Msg($"--------------------------------------");
         }
-    }
+    }*/
 }

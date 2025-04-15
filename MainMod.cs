@@ -50,7 +50,7 @@ namespace ChloesManorMod
     public partial class MainMod : MelonMod
     {
         private static Il2CppAssetBundle il2cppCustomAssetsBundle;
-    private static GameObject manorSetupPrefab;
+        private static GameObject manorSetupPrefab;
 
         private const string BundleName = "chloemanorsetup";
         private const string PrefabName = "ManorSetup-Chloe";
@@ -66,131 +66,148 @@ namespace ChloesManorMod
 
         private static bool dialogueModified = false;
 
-    public override void OnInitializeMelon()
-    {
+        public override void OnInitializeMelon()
+        {
             LoggerInstance.Msg($"{BuildInfo.Name} v{BuildInfo.Version} Initializing...");
             LoadAssetBundleViaManager();
-    }
+            LogURPVersion(); // Keep URP version log - useful for compatibility info
 
-    public override void OnSceneWasLoaded(int buildIndex, string sceneName)
-    {
-        LoggerInstance.Msg($"Scene loaded: {sceneName}");
-        if (sceneName == TargetSceneName)
+            // Apply Harmony Patches (Keep error log)
+            try
+            {
+                HarmonyInstance.PatchAll(typeof(MainMod).Assembly);
+                LoggerInstance.Msg("Harmony patches applied."); // Shortened success msg
+            }
+            catch (System.Exception e)
+            {
+                LoggerInstance.Error($"Failed to apply Harmony patches: {e}");
+            }
+        }
+
+        // --- ADDED: Helper method to log URP version ---
+        private void LogURPVersion()
         {
+            LoggerInstance.Msg("--- Checking URP Version ---"); // Shortened
+            Assembly urpAssembly = null;
+            string potentialAssemblyName1 = "Unity.RenderPipelines.Universal.Runtime";
+            string potentialAssemblyName2 = "UnityEngine.RenderPipelines.Universal.Runtime";
+
+            try
+            {
+                Assembly[] loadedAssemblies = System.AppDomain.CurrentDomain.GetAssemblies();
+                foreach (Assembly assembly in loadedAssemblies)
+                {
+                    string assemblyName = assembly.GetName().Name;
+                    if (string.Equals(assemblyName, potentialAssemblyName1, System.StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(assemblyName, potentialAssemblyName2, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        urpAssembly = assembly;
+                        break;
+                    }
+                }
+
+                if (urpAssembly != null)
+                {
+                    System.Version version = urpAssembly.GetName().Version;
+                    LoggerInstance.Msg($"Detected URP Runtime Version: {version.Major}.{version.Minor}.{version.Build}");
+                }
+                else
+                {
+                    LoggerInstance.Warning("Could not find a loaded URP Runtime assembly. Unable to determine exact URP version.");
+                }
+            }
+            catch (System.Exception e) { LoggerInstance.Error($"Exception while checking URP version: {e}"); }
+            LoggerInstance.Msg("----------------------------"); // Shortened
+        }
+
+        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
+        {
+            // LoggerInstance.Msg($"Scene loaded: {sceneName}"); // Can usually remove this
+            if (sceneName == TargetSceneName)
+            {
                 MelonCoroutines.Start(SetupAfterSceneLoad());
             }
             else
             {
-                CleanUp();
+                CleanUp(); // Cleanup logs are important
             }
         }
 
         private IEnumerator SetupAfterSceneLoad()
         {
-            LoggerInstance.Msg("SetupAfterSceneLoad: Waiting one frame...");
-            yield return null;
+            // LoggerInstance.Msg("SetupAfterSceneLoad: Waiting one frame..."); // Removed
+            yield return null; // Keep the wait
 
+            // Keep dialogue mod logs if functionality is kept
             if (!dialogueModified)
             {
-                ModifyEstateAgentChoicesDirectly();
+                 // ModifyEstateAgentChoicesDirectly(); // Keep call if needed
+                 // FindAndLogEstateAgentEvent(); // Keep call if needed
             }
 
-            LoadPrefabsFromIl2CppBundle();
-            SpawnAndConfigurePrefab();
-            FindAndLogEstateAgentEvent();
+            LoadPrefabsFromIl2CppBundle(); // Keep errors from this
+            SpawnAndConfigurePrefab(); // Keep essential logs/errors from this
         }
 
         private void LoadAssetBundleViaManager()
         {
             if (il2cppCustomAssetsBundle != null) return;
 
-            LoggerInstance.Msg($"Loading AssetBundle '{BundleName}' via Il2CppAssetBundleManager...");
+            // LoggerInstance.Msg($"Loading AssetBundle '{BundleName}' via Il2CppAssetBundleManager..."); // Removed verbose
             try
             {
                 Assembly assembly = Assembly.GetExecutingAssembly();
-
-                // --- DEBUG: List all embedded resources ---
-                LoggerInstance.Msg("--- Detected Embedded Resources ---");
-                foreach (string name in assembly.GetManifestResourceNames())
-                {
-                    LoggerInstance.Msg($"Resource: {name}");
-                }
-                LoggerInstance.Msg("---------------------------------");
-                // --- End Debug ---
-
                 string resourceName = $"{typeof(MainMod).Namespace}.{BundleName}";
 
                 using (System.IO.Stream stream = assembly.GetManifestResourceStream(resourceName))
                 {
-                    if (stream == null)
-                    {
-                        LoggerInstance.Error($"Failed to find embedded resource stream: {resourceName}");
-                        return;
-                    }
+                    if (stream == null) { LoggerInstance.Error($"Failed to find embedded resource stream: {resourceName}"); return; }
                     byte[] assetData = new byte[stream.Length];
                     stream.Read(assetData, 0, assetData.Length);
-
                     il2cppCustomAssetsBundle = Il2CppAssetBundleManager.LoadFromMemory(assetData);
 
-                    if (il2cppCustomAssetsBundle == null)
-                    {
-                        LoggerInstance.Error("Il2CppAssetBundleManager.LoadFromMemory failed or returned null!");
-                    }
-                    else
-                    {
-                        LoggerInstance.Msg("AssetBundle loaded successfully via Il2CppAssetBundleManager.");
-                    }
+                    if (il2cppCustomAssetsBundle == null) { LoggerInstance.Error("Il2CppAssetBundleManager.LoadFromMemory failed or returned null!"); }
+                    else { LoggerInstance.Msg($"AssetBundle '{BundleName}' loaded successfully."); } // Keep success/fail
                 }
             }
-            catch (System.MissingMethodException mmex)
-            {
-                LoggerInstance.Error($"Il2CppAssetBundleManager.LoadFromMemory method not found! {mmex.Message}");
-                il2cppCustomAssetsBundle = null;
-            }
-            catch (System.Exception e)
-            {
-                LoggerInstance.Error($"Exception loading AssetBundle via Manager: {e}");
-                il2cppCustomAssetsBundle = null;
-            }
+            catch (System.MissingMethodException mmex) { LoggerInstance.Error($"Il2CppAssetBundleManager.LoadFromMemory method not found! {mmex.Message}"); il2cppCustomAssetsBundle = null; }
+            catch (System.Exception e) { LoggerInstance.Error($"Exception loading AssetBundle: {e}"); il2cppCustomAssetsBundle = null; }
         }
 
         private void LoadPrefabsFromIl2CppBundle()
         {
-            if (il2cppCustomAssetsBundle == null) { LoggerInstance.Error("Cannot load prefab, Il2CppAssetBundle is not loaded."); return; }
+            if (il2cppCustomAssetsBundle == null) { LoggerInstance.Error("Cannot load prefab, AssetBundle is not loaded."); return; } // Keep error
             if (manorSetupPrefab != null) { return; }
 
-            LoggerInstance.Msg($"Loading prefab '{PrefabName}' using Il2CppAssetBundle wrapper...");
+            // LoggerInstance.Msg($"Loading prefab '{PrefabName}' using Il2CppAssetBundle wrapper..."); // Removed verbose
             try
             {
                 UnityEngine.Object loadedAsset = il2cppCustomAssetsBundle.LoadAsset<GameObject>(PrefabName);
-
-                if (loadedAsset == null)
-                {
-                    LoggerInstance.Error($"Failed to load '{PrefabName}' prefab using Il2CppAssetBundle wrapper!");
-                }
+                if (loadedAsset == null) { LoggerInstance.Error($"Failed to load '{PrefabName}' prefab!"); } // Keep error
                 else
                 {
                     manorSetupPrefab = loadedAsset.TryCast<GameObject>();
-                    if (manorSetupPrefab != null) LoggerInstance.Msg($"Prefab '{PrefabName}' loaded successfully via Il2Cpp wrapper.");
-                    else LoggerInstance.Error($"Loaded asset '{PrefabName}' failed to cast to GameObject!");
+                    if (manorSetupPrefab != null) LoggerInstance.Msg($"Prefab '{PrefabName}' loaded successfully."); // Keep success
+                    else LoggerInstance.Error($"Loaded asset '{PrefabName}' failed to cast to GameObject!"); // Keep error
                 }
             }
-            catch (System.Exception e) { LoggerInstance.Error($"Error loading prefab via Il2Cpp wrapper: {e}"); manorSetupPrefab = null; }
+            catch (System.Exception e) { LoggerInstance.Error($"Error loading prefab: {e}"); manorSetupPrefab = null; } // Keep error
         }
 
         private void SpawnAndConfigurePrefab()
         {
-            if (manorSetupPrefab == null) { LoggerInstance.Error("Manor setup prefab not loaded. Cannot spawn."); return; }
-            if (spawnedInstanceRoot != null) { LoggerInstance.Warning("Manor setup instance already exists. Skipping spawn."); return; }
+            if (manorSetupPrefab == null) { LoggerInstance.Error("Manor setup prefab not loaded. Cannot spawn."); return; } // Keep error
+            if (spawnedInstanceRoot != null) { LoggerInstance.Warning("Manor setup instance already exists. Skipping spawn."); return; } // Keep warning
 
             bool spawnedNetworked = false;
             NetworkManager networkManager = (NetworkManager._instances.Count > 0) ? NetworkManager._instances[0] : null;
 
+            // Network Spawn Attempt
             if (networkManager != null && networkManager.ServerManager.Started)
             {
                 if (manorSetupPrefab.GetComponent<NetworkObject>() != null)
                 {
-                    LoggerInstance.Msg($"Server is active. Attempting Network Spawn for '{PrefabName}'...");
+                    // LoggerInstance.Msg($"Server active. Attempting Network Spawn for '{PrefabName}'..."); // Removed verbose
                     GameObject instanceToSpawn = null;
                     NetworkObject nobToSpawn = null;
                     try
@@ -198,137 +215,94 @@ namespace ChloesManorMod
                         instanceToSpawn = GameObject.Instantiate(manorSetupPrefab, Vector3.zero, Quaternion.identity);
                         if (instanceToSpawn != null)
                         {
-                            instanceToSpawn.name = PrefabName + "_PreSpawnInstance";
+                            instanceToSpawn.name = PrefabName + "_PreSpawnInstance"; // Keep internal name change
                             nobToSpawn = instanceToSpawn.GetComponent<NetworkObject>();
                             if (nobToSpawn != null)
                             {
                                 ServerManager serverManager = networkManager.ServerManager;
                                 serverManager.Spawn(nobToSpawn, null);
-
                                 spawnedNetworkObject = nobToSpawn;
                                 spawnedInstanceRoot = instanceToSpawn;
-                                spawnedInstanceRoot.name = PrefabName + "_NetworkInstance";
+                                spawnedInstanceRoot.name = PrefabName + "_NetworkInstance"; // Keep internal name change
                                 spawnedNetworked = true;
-                                LoggerInstance.Msg($"Network Spawn successful. Instance: {spawnedInstanceRoot.name}");
+                                LoggerInstance.Msg($"Network Spawn successful: {spawnedInstanceRoot.name}"); // Keep success
                             }
-                            else { LoggerInstance.Error("Instantiated prefab missing NetworkObject component! Cannot network spawn."); GameObject.Destroy(instanceToSpawn); }
+                            else { LoggerInstance.Error("Instantiated prefab missing NetworkObject! Cannot network spawn."); GameObject.Destroy(instanceToSpawn); } // Keep error
                         }
-                        else { LoggerInstance.Error("Instantiate returned null!"); }
+                        else { LoggerInstance.Error("Instantiate returned null during network attempt!"); } // Keep error
                     }
-                    catch (System.Exception e)
-                    {
-                        LoggerInstance.Error($"Exception during Network Spawn attempt: {e}");
-                        if (instanceToSpawn != null) GameObject.Destroy(instanceToSpawn);
-                        spawnedNetworked = false;
-                        spawnedInstanceRoot = null;
-                        spawnedNetworkObject = null;
-                    }
+                    catch (System.Exception e) { LoggerInstance.Error($"Exception during Network Spawn attempt: {e}"); if (instanceToSpawn != null) GameObject.Destroy(instanceToSpawn); spawnedNetworked = false; spawnedInstanceRoot = null; spawnedNetworkObject = null; } // Keep error
                 }
-                else
-                {
-                    LoggerInstance.Warning($"Prefab '{PrefabName}' missing NetworkObject component. Cannot network spawn. Falling back to local spawn.");
-                }
+                else { LoggerInstance.Warning($"Prefab '{PrefabName}' missing NetworkObject. Falling back to local spawn."); } // Keep warning
             }
-            else
-            {
-                if (networkManager == null) LoggerInstance.Msg("NetworkManager not found.");
-                else LoggerInstance.Msg("Server is not active.");
-                LoggerInstance.Msg("Falling back to local spawn.");
-            }
+            else { LoggerInstance.Msg("Server not active or NetworkManager not found. Using local spawn."); } // Keep info
 
+            // Local Spawn (Fallback)
             if (!spawnedNetworked)
             {
-                LoggerInstance.Msg($"Attempting Local Instantiate for '{PrefabName}'...");
+                // LoggerInstance.Msg($"Attempting Local Instantiate for '{PrefabName}'..."); // Removed verbose
                 try
                 {
                     spawnedInstanceRoot = GameObject.Instantiate(manorSetupPrefab, Vector3.zero, Quaternion.identity);
                     if (spawnedInstanceRoot != null)
                     {
-                        spawnedInstanceRoot.name = PrefabName + "_LocalInstance";
-                        LoggerInstance.Msg($"Local Instantiate successful. Instance: {spawnedInstanceRoot.name}");
+                        spawnedInstanceRoot.name = PrefabName + "_LocalInstance"; // Keep internal name change
+                        LoggerInstance.Msg($"Local Instantiate successful: {spawnedInstanceRoot.name}"); // Keep success
                     }
-                    else
-                    {
-                        LoggerInstance.Error("Local Instantiate returned null!");
-                        return;
-                    }
+                    else { LoggerInstance.Error("Local Instantiate returned null!"); return; } // Keep error
                 }
-                catch (System.Exception e)
-                {
-                    LoggerInstance.Error($"Exception during Local Instantiate: {e}");
-                    spawnedInstanceRoot = null;
-                    return;
-                }
+                catch (System.Exception e) { LoggerInstance.Error($"Exception during Local Instantiate: {e}"); spawnedInstanceRoot = null; return; } // Keep error
             }
 
+            // Parenting and Configuration
             if (spawnedInstanceRoot != null)
             {
                 Property manorProperty = FindManor();
-                if (manorProperty == null)
-                {
-                    LoggerInstance.Error("Manor property not found post-spawn. Cannot parent or configure components.");
-                }
+                if (manorProperty == null) { LoggerInstance.Error("Manor property not found post-spawn. Cannot configure."); } // Keep error
                 else
                 {
-                    LoggerInstance.Msg($"Found Manor property '{manorProperty.PropertyName}'. Parenting '{spawnedInstanceRoot.name}' to it.");
+                    // LoggerInstance.Msg($"Found Manor property '{manorProperty.PropertyName}'. Parenting '{spawnedInstanceRoot.name}'..."); // Removed verbose parenting log
                     try
                     {
+                        // Use worldPositionStays = true as last requested, KEEP THIS LOG to confirm behavior
                         spawnedInstanceRoot.transform.SetParent(manorProperty.transform, true);
-                        LoggerInstance.Msg($"Parenting successful (worldPositionStays=true). New parent: {spawnedInstanceRoot.transform.parent?.name ?? "None"}");
-                        LoggerInstance.Msg($"   New Local Position: {spawnedInstanceRoot.transform.localPosition}");
-                        LoggerInstance.Msg($"   New World Position: {spawnedInstanceRoot.transform.position}");
+                        LoggerInstance.Msg($"Parented '{spawnedInstanceRoot.name}' to Manor (worldPositionStays=true).");
+                        // LoggerInstance.Msg($"   New Local Position: {spawnedInstanceRoot.transform.localPosition}"); // Maybe remove detailed pos
+                        // LoggerInstance.Msg($"   New World Position: {spawnedInstanceRoot.transform.position}"); // Maybe remove detailed pos
                     }
-                    catch (System.Exception e)
-                    {
-                        LoggerInstance.Error($"Exception during SetParent: {e}");
-                        return;
-                    }
+                    catch (System.Exception e) { LoggerInstance.Error($"Exception during SetParent: {e}"); return; } // Keep error
 
-                    LoggerInstance.Msg("Calling ManorSetupHelper configuration...");
-                    ManorSetupHelper.ConfigureManorSetup(spawnedInstanceRoot, manorProperty);
-                    LoggerInstance.Msg("ManorSetupHelper configuration called.");
+                    // Call Configuration Helper
+                    // LoggerInstance.Msg("Calling ManorSetupHelper configuration..."); // Removed verbose
+                    ManorSetupHelper.ConfigureManorSetup(spawnedInstanceRoot, manorProperty); // Keep errors from helper
+                    // LoggerInstance.Msg("ManorSetupHelper configuration called."); // Removed verbose
                 }
             }
-            else
-            {
-                LoggerInstance.Error("Spawned instance root is null after attempting both network and local spawn. Cannot parent or configure.");
-            }
+            else { LoggerInstance.Error("Spawned instance root is null after spawn attempts. Cannot configure."); } // Keep error
         }
 
-        // FindManor instance method (used by SpawnAndConfigurePrefab)
         Property FindManor()
         {
-            // Ensure correct namespace for PropertyManager and Property are used
-            if (Il2CppScheduleOne.Property.PropertyManager.Instance == null)
-            {
-                LoggerInstance.Error("FindManor: PropertyManager instance not found!");
-                return null;
-            }
-            // Use the class constant ManorPropertyCode
+            if (Il2CppScheduleOne.Property.PropertyManager.Instance == null) { /* LoggerInstance.Error("FindManor: PropertyManager instance not found!"); */ return null; } // Silent fail maybe? Or keep error? Let's keep for now.
             Property prop = Il2CppScheduleOne.Property.PropertyManager.Instance.GetProperty(ManorPropertyCode);
-            if (prop == null)
-            {
-                LoggerInstance.Error($"FindManor: Could not find Property with code '{ManorPropertyCode}'.");
-            }
+            if (prop == null) { /* LoggerInstance.Error($"FindManor: Could not find Property with code '{ManorPropertyCode}'."); */ } // Silent fail maybe? Let's keep for now.
+            // else { LoggerInstance.Msg($"FindManor: Found property '{prop.PropertyName}'."); } // Remove success log
             return prop;
         }
 
-        // --- Keep the existing static version needed by Harmony ---
+        // Keep Static version if needed by Harmony
         public static Property FindManor_Static()
         {
-            const string ManorPropertyCode_StaticAccess = "manor";
-            if (Il2CppScheduleOne.Property.PropertyManager.Instance == null)
-            {
-                MelonLoader.MelonLogger.Error("StaticFindManor: PropertyManager instance not found!");
-                return null;
-            }
-            Property prop = Il2CppScheduleOne.Property.PropertyManager.Instance.GetProperty(ManorPropertyCode_StaticAccess);
-            if (prop == null) MelonLoader.MelonLogger.Error($"StaticFindManor: Could not find Property with code '{ManorPropertyCode_StaticAccess}'.");
-            return prop;
+             // Keep logs here as they are static context
+             if (Il2CppScheduleOne.Property.PropertyManager.Instance == null) { MelonLoader.MelonLogger.Error("StaticFindManor: PropertyManager instance not found!"); return null; }
+             Property prop = Il2CppScheduleOne.Property.PropertyManager.Instance.GetProperty("manor");
+             if (prop == null) MelonLoader.MelonLogger.Error($"StaticFindManor: Could not find Property with code 'manor'.");
+             return prop;
         }
 
         void CleanUp()
         {
+             // Keep cleanup logs as they indicate resource release
             if (spawnedNetworkObject != null)
             {
                 LoggerInstance.Msg($"Cleaning up NETWORKED instance (ObjectId: {spawnedNetworkObject.ObjectId}).");
@@ -350,524 +324,66 @@ namespace ChloesManorMod
             }
             else if (spawnedInstanceRoot != null)
             {
-                LoggerInstance.Msg($"Cleaning up LOCAL instance.");
+                LoggerInstance.Msg($"Cleaning up LOCAL instance '{spawnedInstanceRoot.name}'.");
                 GameObject.Destroy(spawnedInstanceRoot);
             }
-
             spawnedInstanceRoot = null;
             spawnedNetworkObject = null;
+            dialogueModified = false; // Reset dialogue flag if used
         }
 
-        private void TeleportToTestCube(string cubeName)
-        {
-            if (spawnedInstanceRoot == null)
-            {
-                LoggerInstance.Warning($"Teleport requested ('{cubeName}') but setup instance root not found!");
-                return;
-            }
-
-            Transform cubeTransform = FindDeepChild(spawnedInstanceRoot.transform, cubeName);
-
-            if (cubeTransform == null)
-            {
-                LoggerInstance.Warning($"Teleport target '{cubeName}' not found within the spawned instance!");
-                return;
-            }
-
-            Vector3 targetPosition = cubeTransform.position + Vector3.up * 0.5f;
-            LoggerInstance.Msg($"Teleport target '{cubeName}' found at world position: {cubeTransform.position}. Target teleport position: {targetPosition}");
-
-            // --- ADD MATERIAL/SHADER LOGGING FOR CUBE ---
-            MeshRenderer cubeRenderer = cubeTransform.GetComponent<MeshRenderer>();
-            if (cubeRenderer != null)
-            {
-                LoggerInstance.Msg($"Cube '{cubeName}' Renderer Enabled: {cubeRenderer.enabled}");
-                Material cubeMat = cubeRenderer.material; // Gets the instance of the material
-                if (cubeMat != null)
-                {
-                    string textureName = cubeMat.mainTexture != null ? cubeMat.mainTexture.name : "NULL";
-                    string shaderName = cubeMat.shader != null ? cubeMat.shader.name : "NULL";
-                    LoggerInstance.Msg($" -> Material: {cubeMat.name}");
-                    LoggerInstance.Msg($" -> Main Texture: {textureName}");
-                    LoggerInstance.Msg($" -> Shader: {shaderName}");
-                }
-                else
-                {
-                    LoggerInstance.Warning(" -> Material on Renderer is NULL!");
-                }
-            }
-            else
-            {
-                LoggerInstance.Warning($" -> MeshRenderer component NOT found on '{cubeName}'!");
-            }
-            // --- END LOGGING ---
-
-            Player playerInstance = null;
-            try
-            {
-                playerInstance = GameObject.FindObjectOfType<Player>();
-            }
-            catch (System.Exception e)
-            {
-                LoggerInstance.Error($"Exception during FindObjectOfType<Player>: {e}");
-            return;
-            }
-
-            if (playerInstance != null && playerInstance.transform != null)
-            {
-                Transform playerTransform = playerInstance.transform;
-                try
-                {
-                    playerTransform.position = targetPosition;
-                    LoggerInstance.Msg($"Teleported player to '{cubeName}'");
-                }
-                catch (System.Exception e)
-                {
-                    LoggerInstance.Error($"Exception during playerTransform.position assignment: {e}");
-                }
-            }
-            else
-            {
-                LoggerInstance.Warning("Could not find valid Player object/transform to teleport!");
-            }
-        }
-
-        private Transform FindDeepChild(Transform parent, string childName)
-        {
-            if (parent == null) return null;
-            Transform child = parent.Find(childName);
-            if (child != null) return child;
-            foreach (Transform t in parent.GetComponentsInChildren<Transform>(true))
-            {
-                if (t.gameObject.name == childName)
-                {
-                    return t;
-                }
-            }
-            return null;
-        }
-
-        private void LogInstanceDebugInfo()
-        {
-            LoggerInstance.Msg("--- Instance Debug Info Requested ---");
-            if (spawnedInstanceRoot == null)
-            {
-                LoggerInstance.Warning("Spawned instance root is NULL.");
-                return;
-            }
-
-            LoggerInstance.Msg($"Root Object Name: {spawnedInstanceRoot.name}");
-            LoggerInstance.Msg($" -> Position: {spawnedInstanceRoot.transform.position}");
-            LoggerInstance.Msg($" -> Rotation: {spawnedInstanceRoot.transform.rotation.eulerAngles}");
-            LoggerInstance.Msg($" -> Active Self: {spawnedInstanceRoot.activeSelf}");
-            LoggerInstance.Msg($" -> Active in Hierarchy: {spawnedInstanceRoot.activeInHierarchy}");
-
-            Transform cube1 = FindDeepChild(spawnedInstanceRoot.transform, "Cube Test");
-            if (cube1 != null)
-            {
-                LoggerInstance.Msg($"Cube 'Cube Test':");
-                LoggerInstance.Msg($" -> Local Pos: {cube1.localPosition}");
-                LoggerInstance.Msg($" -> World Pos: {cube1.position}");
-                LoggerInstance.Msg($" -> Active Self: {cube1.gameObject.activeSelf}");
-                LoggerInstance.Msg($" -> Active in Hierarchy: {cube1.gameObject.activeInHierarchy}");
-                MeshRenderer mr = cube1.GetComponent<MeshRenderer>();
-                if (mr != null) LoggerInstance.Msg($" -> MeshRenderer Enabled: {mr.enabled}");
-                else LoggerInstance.Msg(" -> MISSING MeshRenderer!");
-            }
-            else
-            {
-                LoggerInstance.Warning($" -> Cube 'Cube Test' object NOT found!");
-            }
-
-            Transform cube2 = FindDeepChild(spawnedInstanceRoot.transform, "Cube Test 2");
-            if (cube2 != null)
-            {
-                LoggerInstance.Msg($"Cube 'Cube Test 2':");
-                LoggerInstance.Msg($" -> Local Pos: {cube2.localPosition}");
-                LoggerInstance.Msg($" -> World Pos: {cube2.position}");
-                LoggerInstance.Msg($" -> Active Self: {cube2.gameObject.activeSelf}");
-                LoggerInstance.Msg($" -> Active in Hierarchy: {cube2.gameObject.activeInHierarchy}");
-                MeshRenderer mr = cube2.GetComponent<MeshRenderer>();
-                if (mr != null) LoggerInstance.Msg($" -> MeshRenderer Enabled: {mr.enabled}");
-                else LoggerInstance.Msg(" -> MISSING MeshRenderer!");
-            }
-            else
-            {
-                LoggerInstance.Warning($" -> Cube 'Cube Test 2' object NOT found!");
-            }
-
-            LoggerInstance.Msg("--- End Instance Debug Info ---");
-        }
-
-        private void LogManorGateMaterials()
-        {
-            LoggerInstance.Msg("--- ManorGate Material/Shader Check ---");
-
-            // Find ANY ManorGate instance in the scene
-            ManorGate gateInstance = GameObject.FindObjectOfType<ManorGate>();
-
-            if (gateInstance == null)
-            {
-                LoggerInstance.Warning("Could not find any ManorGate instance in the scene.");
-                return;
-            }
-
-            LoggerInstance.Msg($"Found ManorGate: {gateInstance.gameObject.name}");
-
-            // Get all MeshRenderers in its children (including self if it has one)
-            var childRenderers = gateInstance.GetComponentsInChildren<MeshRenderer>(true); // Include inactive renderers
-
-            if (childRenderers == null || childRenderers.Length == 0)
-            {
-                LoggerInstance.Warning($"No MeshRenderers found in children of {gateInstance.gameObject.name}.");
-            return;
-            }
-
-            LoggerInstance.Msg($"Found {childRenderers.Length} MeshRenderers in children:");
-            int count = 0;
-            foreach (MeshRenderer renderer in childRenderers)
-            {
-                count++;
-                if (renderer == null) continue;
-
-                LoggerInstance.Msg($"  Renderer {count} on GameObject: '{renderer.gameObject.name}' (Enabled: {renderer.enabled})");
-                Material mat = renderer.material; // Instance
-                if (mat != null)
-                {
-                    string textureName = mat.mainTexture != null ? mat.mainTexture.name : "NULL";
-                    string shaderName = mat.shader != null ? mat.shader.name : "NULL";
-                    LoggerInstance.Msg($"   -> Material: {mat.name}");
-                    LoggerInstance.Msg($"   -> Main Texture: {textureName}");
-                    LoggerInstance.Msg($"   -> Shader: {shaderName}");
-                }
-                else
-                {
-                    LoggerInstance.Warning("   -> Material on Renderer is NULL!");
-                }
-            }
-            LoggerInstance.Msg("--- End ManorGate Check ---");
-        }
-
-        // --- Modified: Method to directly overwrite choices on the specific event ---
-        private void ModifyEstateAgentChoicesDirectly()
-        {
-            // Prevent running multiple times if already successful
-            if (dialogueModified)
-            {
-                LoggerInstance.Msg("ModifyEstateAgentChoicesDirectly: Skipping, dialogue already modified.");
-                return;
-            }
-
-            const string TargetDialogueContainerName = "EstateAgent_Sell";
-            const string PropertyChoiceNodeGuid = "8e2ef594-96d9-43f2-8cfa-6efaea823a56";
-
-            LoggerInstance.Msg($"Attempting to find Ray's specific '{TargetDialogueContainerName}' event to modify choices...");
-
-            // --- Find Ray and the specific event component ---
-            NPCEvent_LocationDialogue targetEventComponent = null;
-            Ray rayInstance = GameObject.FindObjectOfType<Ray>(); // Try finding the specific Ray component first
-            Component searchTargetComponent = null;
-
-            if (rayInstance != null)
-            {
-                searchTargetComponent = rayInstance;
-                LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found specific Ray component instance.");
-            }
-            else
-            {
-                // Fallback: Find NPC GameObject named "Ray"
-                LoggerInstance.Warning($"ModifyEstateAgentChoicesDirectly: Could not find specific Ray component. Falling back to finding NPC GameObject named 'Ray'.");
-                NPC[] allNpcs = GameObject.FindObjectsOfType<NPC>();
-                NPC rayNpc = null;
-                foreach (var npc in allNpcs)
-                {
-                    // Case-insensitive comparison for safety
-                    if (npc != null && npc.gameObject != null && npc.gameObject.name.Equals("Ray", System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        rayNpc = npc;
-                        break;
-                    }
-                }
-
-                if (rayNpc != null)
-                {
-                    searchTargetComponent = rayNpc;
-                    LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found NPC GameObject named 'Ray'.");
-                }
-                else
-                {
-                    LoggerInstance.Error("ModifyEstateAgentChoicesDirectly: Could not find Ray NPC instance via specific component or GameObject name.");
-                    return; // Cannot proceed without Ray
-                }
-            }
-
-            if (searchTargetComponent == null)
-            {
-                LoggerInstance.Error("ModifyEstateAgentChoicesDirectly: Search target component for Ray is null after attempts.");
-                return;
-            }
-
-            // Search for the event component on the found target (Ray)
-            var locationDialogueEvents = searchTargetComponent.GetComponentsInChildren<Il2CppScheduleOne.NPCs.Schedules.NPCEvent_LocationDialogue>(true); // Include inactive
-            if (locationDialogueEvents == null || locationDialogueEvents.Length == 0)
-            {
-                LoggerInstance.Warning($"ModifyEstateAgentChoicesDirectly: No NPCEvent_LocationDialogue components found on Ray ('{searchTargetComponent.gameObject.name}') or his children.");
-                return;
-            }
-
-            LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found {locationDialogueEvents.Length} NPCEvent_LocationDialogue components on '{searchTargetComponent.gameObject.name}'. Checking each...");
-            foreach (var eventComponent in locationDialogueEvents)
-            {
-                // Check if the event component and its override are valid, and if the override name matches
-                if (eventComponent != null && eventComponent.DialogueOverride != null && eventComponent.DialogueOverride.name == TargetDialogueContainerName)
-                {
-                    targetEventComponent = eventComponent;
-                    LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found target event component on '{eventComponent.gameObject.name}'.");
-                    break; // Found the correct event
-                }
-                else if (eventComponent != null)
-                {
-                     // Log details if it's not the target but has an override
-                     string overrideName = (eventComponent.DialogueOverride != null) ? eventComponent.DialogueOverride.name : "NULL";
-                     LoggerInstance.Msg($" -> Skipping event on '{eventComponent.gameObject.name}'. DialogueOverride: '{overrideName}'");
-                }
-            }
-
-            if (targetEventComponent == null)
-            {
-                LoggerInstance.Error($"ModifyEstateAgentChoicesDirectly: Could not find the specific NPCEvent_LocationDialogue using '{TargetDialogueContainerName}' on Ray.");
-                return; // Cannot proceed without the specific event
-            }
-            // --- End finding specific event component ---
-
-            // --- Modify the container directly referenced by the event ---
-            DialogueContainer container = targetEventComponent.DialogueOverride; // Use the container *from the event*!
-            if (container == null)
-            {
-                LoggerInstance.Error("ModifyEstateAgentChoicesDirectly: Target event component's DialogueOverride is null! Cannot modify.");
-            return;
-        }
-
-            LoggerInstance.Msg($"Modifying choices in the specific DialogueContainer instance (Name: {container.name}, ID: {container.GetInstanceID()}) used by Ray's event.");
-
-            // Find the specific node within *this container instance*
-            DialogueNodeData choiceNode = null;
-            if (container.DialogueNodeData != null)
-            {
-                // Iterate using index for Il2CppReferenceArray
-                for (int i = 0; i < container.DialogueNodeData.Count; i++)
-                {
-                    var node = container.DialogueNodeData[i];
-                    if (node != null && node.Guid == PropertyChoiceNodeGuid)
-                    {
-                        choiceNode = node;
-                        break;
-                    }
-                }
-            }
-
-            if (choiceNode == null)
-            {
-                LoggerInstance.Error($"Could not find the Property Choice node (GUID: {PropertyChoiceNodeGuid}) within the event's specific container instance ('{container.name}').");
-                return;
-            }
-            LoggerInstance.Msg($"Found Property Choice node: '{choiceNode.DialogueNodeLabel}' (GUID: {choiceNode.Guid}) within the event's container.");
-
-            // Check if ALREADY modified (on *this* instance)
-            // Be careful comparing Il2CppReferenceArray elements
-            bool alreadyHasManor = false;
-            if (choiceNode.choices != null && choiceNode.choices.Count >= 4) // Check count before indexing
-            {
-                // Look for the "manor" label specifically, index might change
-                 for(int i = 0; i < choiceNode.choices.Count; i++)
-                 {
-                    var choice = choiceNode.choices[i];
-                    if(choice != null && choice.ChoiceLabel == "manor")
-                    {
-                        alreadyHasManor = true;
-                        break;
-                    }
-                 }
-            }
-
-
-            if (alreadyHasManor)
-            {
-                LoggerInstance.Msg("Dialogue choices on this specific event container seem to already include 'manor'. Skipping modification.");
-                dialogueModified = true; // Set flag even if skipped, assumes it's correctly modified
-                return;
-            }
-             else
-            {
-                LoggerInstance.Msg($"Choice node '{choiceNode.DialogueNodeLabel}' does not currently contain 'manor' choice. Proceeding with modification.");
-            }
-
-
-            // --- Create the new, complete list of choices ---
-            // Use Il2CppSystem.Collections.Generic.List for compatibility if assigning directly isn't reliable
-            // But using standard List<T> and converting often works.
-            var newChoicesList = new List<Il2CppScheduleOne.Dialogue.DialogueChoiceData>();
-
-            // Add Bungalow
-            newChoicesList.Add(new DialogueChoiceData { Guid = "f3a15b13-14d1-420a-ad17-d731155701d8", ChoiceText = "The Bungalow (<PRICE>)", ChoiceLabel = "bungalow" });
-            // Add Barn
-            newChoicesList.Add(new DialogueChoiceData { Guid = "b668ec37-4c92-4949-a113-62d1effdb3b2", ChoiceText = "The Barn (<PRICE>)", ChoiceLabel = "barn" });
-            // Add Docks Warehouse
-            newChoicesList.Add(new DialogueChoiceData { Guid = "ad2170b0-1789-4a61-94fb-6ffc2b720252", ChoiceText = "The Docks Warehouse (<PRICE>)", ChoiceLabel = "dockswarehouse" });
-            // Add Manor (New Data)
-            newChoicesList.Add(new DialogueChoiceData { Guid = System.Guid.NewGuid().ToString(), ChoiceText = "Hilltop Manor (<PRICE>)", ChoiceLabel = "manor" });
-            // Add Nevermind
-            newChoicesList.Add(new DialogueChoiceData { Guid = "7406b61c-cb6e-418f-ba2b-bfb28f1b0b70", ChoiceText = "Nevermind", ChoiceLabel = "" });
-            // --- Finished creating new list ---
-
-            // --- Assign the new list back to the node in *this specific container* ---
-            try
-            {
-                // Convert standard List<T> to Il2CppReferenceArray<T> for assignment
-                choiceNode.choices = new Il2CppReferenceArray<DialogueChoiceData>(newChoicesList.ToArray());
-
-                // Verification Log: Check the count and maybe the last item's label right after assignment
-                if (choiceNode.choices != null && choiceNode.choices.Count == 5)
-                {
-                     string lastLabel = (choiceNode.choices[4] != null) ? choiceNode.choices[4].ChoiceLabel : "NULL_CHOICE";
-                     string manorLabel = (choiceNode.choices[3] != null) ? choiceNode.choices[3].ChoiceLabel : "NULL_CHOICE";
-                     LoggerInstance.Msg($"Successfully OVERWROTE choices for node '{choiceNode.DialogueNodeLabel}' within the event's specific container. New count: {choiceNode.choices.Count}. Manor Label: '{manorLabel}', Last Label: '{lastLabel}'.");
-                     dialogueModified = true; // Set flag on success
-                }
-                else
-                {
-                    int currentCount = (choiceNode.choices != null) ? choiceNode.choices.Count : -1; // -1 indicates null array
-                    LoggerInstance.Error($"Assignment failed or resulted in unexpected count! Current count: {currentCount}");
-                }
-            }
-            catch (System.Exception e)
-            {
-                LoggerInstance.Error($"Error assigning new choices array to the specific event container: {e}");
-                // Potentially reset dialogueModified flag if error handling requires retry logic?
-                // dialogueModified = false;
-            }
-        }
-
-        // --- NEW: Method to find the specific dialogue event on Ray ---
-        private void FindAndLogEstateAgentEvent()
-        {
-            LoggerInstance.Msg("Attempting to find Ray and his Estate Agent Dialogue Event...");
-            Ray rayInstance = GameObject.FindObjectOfType<Ray>();
-            Component searchTargetComponent = null;
-            if (rayInstance == null)
-            {
-                NPC[] allNpcs = GameObject.FindObjectsOfType<NPC>();
-                NPC rayNpc = null;
-                foreach (var npc in allNpcs) { if (npc.gameObject.name.Equals("Ray", System.StringComparison.OrdinalIgnoreCase)) { rayNpc = npc; break; } }
-                if (rayNpc != null) { searchTargetComponent = rayNpc; LoggerInstance.Msg($"Found NPC GameObject named 'Ray'. Searching its components..."); }
-                else { LoggerInstance.Error("Could not find Ray NPC instance in the scene."); return; }
-            }
-            else { searchTargetComponent = rayInstance; } // Use specific Ray component if found
-
-            if (searchTargetComponent == null) { LoggerInstance.Error("Search target component for Ray is null."); return; }
-            LoggerInstance.Msg($"Searching children of '{searchTargetComponent.gameObject.name}' for NPCEvent_LocationDialogue...");
-
-            var locationDialogueEvents = searchTargetComponent.GetComponentsInChildren<Il2CppScheduleOne.NPCs.Schedules.NPCEvent_LocationDialogue>(true);
-            if (locationDialogueEvents == null || locationDialogueEvents.Length == 0) { LoggerInstance.Warning($"No NPCEvent_LocationDialogue components found on Ray or his children."); return; }
-
-            LoggerInstance.Msg($"Found {locationDialogueEvents.Length} NPCEvent_LocationDialogue components. Checking each:");
-            bool foundTargetEvent = false;
-            foreach (var eventComponent in locationDialogueEvents)
-            {
-                if (eventComponent == null) continue;
-
-                DialogueContainer dialogueOverride = eventComponent.DialogueOverride;
-                string overrideName = dialogueOverride != null ? dialogueOverride.name : "NULL";
-                LoggerInstance.Msg($" -> Checking event on GameObject: '{eventComponent.gameObject.name}', DialogueOverride: '{overrideName}'");
-
-                // Check if this is the one we want
-                if (dialogueOverride != null && dialogueOverride.name == "EstateAgent_Sell")
-                {
-                    LoggerInstance.Msg($"   -> SUCCESS: Found target event!");
-                    foundTargetEvent = true;
-                }
-            }
-
-            if (!foundTargetEvent)
-            {
-                LoggerInstance.Warning("Checked all found events, none had 'EstateAgent_Sell' as DialogueOverride.");
-            }
-            else
-            {
-                LoggerInstance.Msg("Correct Estate Agent dialogue event was located.");
-            }
-        }
-
-        // --- ADDED: Update method for F7 key press ---
+        // Keep F-Key Teleport for debug builds / personal use
         public override void OnUpdate()
         {
-            // Check if F7 was pressed this frame
             if (Input.GetKeyDown(KeyCode.F7))
             {
-                LoggerInstance.Msg("F7 pressed. Attempting to teleport to truck...");
-                TeleportToGasMartWestTruck();
+                 // LoggerInstance.Msg("F7 pressed. Teleporting..."); // Remove verbose
+                 TeleportToGasMartWestTruck(); // Keep errors from this
             }
         }
-        // --- END ADDED: Update method ---
 
         private void TeleportToGasMartWestTruck()
         {
             LandVehicle targetVehicle = null;
-            string targetVehicleName = "Dan's Hardware"; // The exact name to find
+            string targetVehicleName = "Dan's Hardware"; // Updated based on last known target
 
             try
             {
-                 // Find all LandVehicle components in the scene
                  Il2CppArrayBase<LandVehicle> allVehicles = GameObject.FindObjectsOfType<LandVehicle>();
+                 if (allVehicles == null || allVehicles.Count == 0) { /* LoggerInstance.Warning("No LandVehicles found."); */ return; } // Silent fail
 
-                 if (allVehicles == null || allVehicles.Count == 0)
-                 {
-                     LoggerInstance.Warning("Could not find any LandVehicle components in the scene.");
-                     return;
-                 }
-
-                 LoggerInstance.Msg($"Found {allVehicles.Count} LandVehicles. Searching for '{targetVehicleName}'...");
-
-                 // Iterate through the found vehicles
+                 // LoggerInstance.Msg($"Found {allVehicles.Count} vehicles. Searching for '{targetVehicleName}'..."); // Remove verbose
                  foreach (LandVehicle vehicle in allVehicles)
                  {
-                     // Check if the vehicle and its GameObject are valid and if the name matches
                      if (vehicle != null && vehicle.gameObject != null && vehicle.gameObject.name == targetVehicleName)
                      {
                          targetVehicle = vehicle;
-                         LoggerInstance.Msg($"Found target vehicle: '{targetVehicle.gameObject.name}'");
-                         break; // Stop searching once found
+                         break;
                      }
                  }
 
-                 if (targetVehicle == null)
-                 {
-                     LoggerInstance.Warning($"Could not find a LandVehicle named '{targetVehicleName}'.");
-                     return;
-                 }
+                 if (targetVehicle == null) { LoggerInstance.Warning($"Could not find vehicle named '{targetVehicleName}'."); return; } // Keep warning
 
-                 // Find the player instance
                  Player playerInstance = GameObject.FindObjectOfType<Player>();
-                 if (playerInstance == null || playerInstance.transform == null)
-                 {
-                     LoggerInstance.Warning("Could not find valid Player object/transform to teleport!");
-                     return;
-                 }
+                 if (playerInstance == null || playerInstance.transform == null) { /* LoggerInstance.Warning("Could not find Player."); */ return; } // Silent fail
 
-                 // Calculate teleport position (slightly above the vehicle)
                  Vector3 teleportPos = targetVehicle.transform.position + Vector3.up * 2.0f;
-                 LoggerInstance.Msg($"Target position: {targetVehicle.transform.position}. Teleporting player to: {teleportPos}");
-
-                 // Perform the teleport
+                 // LoggerInstance.Msg($"Teleporting player to: {teleportPos}"); // Remove verbose
                  playerInstance.transform.position = teleportPos;
-                 LoggerInstance.Msg("Player teleported successfully.");
-
+                 LoggerInstance.Msg("Teleported player via F7."); // Keep confirmation
             }
-            catch (System.Exception e)
-            {
-                 LoggerInstance.Error($"Exception during teleport attempt: {e}");
-            }
+            catch (System.Exception e) { LoggerInstance.Error($"Exception during F7 teleport: {e}"); } // Keep error
         }
-    }
 
-}
+        // Keep dialogue modification methods/logs if that feature is still intended
+        // ModifyEstateAgentChoicesDirectly()
+        // FindAndLogEstateAgentEvent()
+
+        // Remove testing methods if no longer needed
+        // TeleportToTestCube()
+        // FindDeepChild() // Keep if used by non-test methods
+        // LogInstanceDebugInfo()
+        // LogManorGateMaterials()
+
+    } // End partial class MainMod
+} // End namespace

@@ -9,6 +9,7 @@ using Il2CppScheduleOne.Delivery;
 using Il2CppScheduleOne.Persistence;
 using Il2CppScheduleOne.Map;
 using Il2CppScheduleOne.Interaction;
+using Il2CppScheduleOne.Tiles;
 using Il2CppSystem; // For Guid
 using UnityEngine.Events;
 using System.Reflection;
@@ -38,179 +39,98 @@ namespace ChloesManorMod
         /// <param name="manorProperty">The Il2Cpp Property object for the Manor.</param>
         public static void ConfigureManorSetup(GameObject spawnedInstanceRoot, Property manorProperty)
         {
-            MelonLogger.Msg($"--- ManorSetupHelper.ConfigureManorSetup START ---");
+            MelonLogger.Msg($"--- ManorSetupHelper starting configuration for '{manorProperty.PropertyName}' ---");
             if (spawnedInstanceRoot == null || manorProperty == null)
             {
-                MelonLogger.Error("ConfigureManorSetup: Spawned instance root or Manor property is null. Aborting setup.");
+                MelonLogger.Error("ManorSetupHelper: Aborting due to null instance or property.");
                 return;
             }
-            Transform parentTransform = spawnedInstanceRoot.transform; // Root transform of your spawned prefab
 
-            // --- 1. Find Template Projector ---
+
+            Transform parentTransform = spawnedInstanceRoot.transform;
+            ManorGate manorGate = manorProperty.GetComponentInChildren<ManorGate>();
+
+            manorProperty.onThisPropertyAcquired.AddListener(new System.Action(() => manorGate.SetEnterable(true)));
+
+
+            // --- Grid Check ---
+            Grid manorGrid = spawnedInstanceRoot.GetComponentInChildren<Grid>(true);
+            if (manorGrid != null) { }
+            else { MelonLogger.Error($"   !!! FAILED to find Grid component within spawned instance '{spawnedInstanceRoot.name}'! Building may fail."); }
+
+            // --- Find Template Projector ---
             GameObject templateProjectorGO = FindTemplateProjector();
-            if (templateProjectorGO == null)
-            {
-                 MelonLogger.Error("Could not find template 'Projector' GameObject from Bungalow Loading Dock. Cannot copy projectors.");
-                 // Decide if you want to continue without projectors or stop
-                 // return; // Uncomment to stop if template is essential
-            }
-             else
-            {
-                 MelonLogger.Msg($"Found template Projector GameObject: '{templateProjectorGO.name}'");
-            }
-            // --- End Find Template Projector ---
+            if (templateProjectorGO == null) { MelonLogger.Warning("Could not find template 'Projector' from Bungalow. Projectors will not be added."); }
 
-
-            // --- 2. Find and Configure Custom Loading Docks (and copy projector) ---
+            // --- Find and Configure Custom Loading Docks ---
             MelonLogger.Msg($"Finding LoadingDock components within '{parentTransform.name}'...");
-            var foundDockComponents = parentTransform.GetComponentsInChildren<LoadingDock>(true); // Include inactive
-            MelonLogger.Msg($"Found {foundDockComponents.Count} LoadingDock components in prefab children.");
+            var foundDockComponents = parentTransform.GetComponentsInChildren<LoadingDock>(true);
 
-            List<LoadingDock> docksToAdd = new List<LoadingDock>(); // Use a list to collect valid docks
+            List<LoadingDock> docksToAdd = new List<LoadingDock>();
 
             foreach (LoadingDock existingDockComp in foundDockComponents)
             {
-                 MelonLogger.Msg($"--- ManorSetupHelper Processing Existing Dock ---");
-                 MelonLogger.Msg($"   Dock GO Name: {existingDockComp.gameObject.name}");
-                 MelonLogger.Msg($"   Dock Instance ID: {existingDockComp.GetInstanceID()}");
+                existingDockComp.ParentProperty = manorProperty;
 
-                 // Assign ParentProperty (if not already set)
-                 existingDockComp.ParentProperty = manorProperty;
-                 MelonLogger.Msg($"   Assigned ParentProperty: {existingDockComp.ParentProperty?.PropertyName ?? "NULL"}");
+                if (!docksToAdd.Contains(existingDockComp)) { docksToAdd.Add(existingDockComp); }
 
-                 // Log the Parking reference *from the existing component*
-                 MelonLogger.Msg($"   Existing Parking Lot Ref: {(existingDockComp.Parking != null ? existingDockComp.Parking.name : "NULL")}");
-                 MelonLogger.Msg($"   Existing Parking Lot Instance ID: {existingDockComp.Parking?.GetInstanceID()}");
-
-                 // Ensure GUID is set (Awake should handle this if BakedGUID is valid, log it)
-                 MelonLogger.Msg($"   Dock BakedGUID: {GetProtectedStringField(existingDockComp, "BakedGUID") ?? "N/A"}");
-                 MelonLogger.Msg($"   Dock Runtime GUID: {existingDockComp.GUID}");
-
-                 // Add the existing, configured component to our list
-                 if (!docksToAdd.Contains(existingDockComp))
-                 {
-
-                     docksToAdd.Add(existingDockComp);
-                     MelonLogger.Msg($"   Added existing dock to list for property update.");
-                 }
-
-                // --- 3. Copy Projector if Template Exists ---
+                // Copy Projector
                 if (templateProjectorGO != null)
                 {
-                    MelonLogger.Msg($"   Attempting to copy Projector to dock '{existingDockComp.gameObject.name}'...");
                     try
                     {
-                        // Instantiate the template
                         GameObject projectorCopy = GameObject.Instantiate(templateProjectorGO);
-                        projectorCopy.name = "Projector (Copied)"; // Rename for clarity
-
-                        // Parent it to the current dock
-                        projectorCopy.transform.SetParent(existingDockComp.transform, false); // worldPositionStays = false
-
-                        // Set local position & rotation to match template's original local values
+                        projectorCopy.name = "Projector (Copied)";
+                        projectorCopy.transform.SetParent(existingDockComp.transform, false);
                         projectorCopy.transform.localPosition = templateProjectorGO.transform.localPosition;
                         projectorCopy.transform.localRotation = templateProjectorGO.transform.localRotation;
-
-                        // Make it the first child
                         projectorCopy.transform.SetSiblingIndex(0);
-
-                        MelonLogger.Msg($"   Successfully copied and configured Projector child.");
                     }
-                    catch(System.Exception e)
-                    {
-                         MelonLogger.Error($"   Failed to copy Projector: {e.Message}");
-                    }
+                    catch(System.Exception e) { MelonLogger.Error($"   Failed to copy Projector for dock '{existingDockComp.gameObject.name}': {e.Message}"); }
                 }
-                else
-                {
-                    MelonLogger.Warning($"   Skipping Projector copy because template was not found.");
-                }
-                // --- End Copy Projector ---
-
-                 MelonLogger.Msg($"-------------------------------------------");
             }
-            // --- End Find/Configure Docks ---
 
-
-            // --- 4. Update Manor Property's LoadingDocks Array ---
+            // --- Update Manor Property's LoadingDocks Array ---
             if (docksToAdd.Count > 0)
             {
-                // Combine with existing docks if necessary, or replace
-                // For simplicity assuming replacement for now, adjust if needed
-                MelonLogger.Msg($"Assigning {docksToAdd.Count} configured docks to Manor Property's LoadingDocks array.");
+                MelonLogger.Msg($"Assigning {docksToAdd.Count} configured docks to Manor Property...");
                 manorProperty.LoadingDocks = docksToAdd.ToArray();
-                // Log the final array state for confirmation
-                 MelonLogger.Msg($"Manor Property now has {manorProperty.LoadingDocks.Length} docks.");
-                 for(int i = 0; i < manorProperty.LoadingDocks.Length; i++)
-                 {
-                     MelonLogger.Msg($"   Index {i}: {manorProperty.LoadingDocks[i]?.gameObject.name ?? "NULL"}, Parking: {manorProperty.LoadingDocks[i]?.Parking?.name ?? "NULL"}");
-                 }
+                MelonLogger.Msg($"Manor assigned {manorProperty.LoadingDocks.Length} LoadingDocks.");
             }
-            else
-            {
-                MelonLogger.Warning("No valid LoadingDock components found in prefab to assign to Manor.");
-            }
-            // --- End Update Manor Property ---
+            else { MelonLogger.Warning("No valid LoadingDock components found in prefab to assign to Manor."); }
 
-            // --- 5. Configure NPC Spawn Point ---
+            // --- Configure NPC Spawn Point ---
             Transform npcSpawnPoint = FindDeepChild(parentTransform, NpcSpawnPointName);
             if (npcSpawnPoint != null)
             {
                 if (manorProperty.NPCSpawnPoint == null)
                 {
-                    MelonLogger.Msg($"Assigning NPC Spawn Point '{npcSpawnPoint.name}' to Manor.");
+                    MelonLogger.Msg($"Assigning NPC Spawn Point '{npcSpawnPoint.name}'.");
                     manorProperty.NPCSpawnPoint = npcSpawnPoint;
-                }
-                else
-                {
-                    MelonLogger.Msg("Manor already has an NPC Spawn Point. Skipping assignment.");
                 }
             }
             else { MelonLogger.Warning($"Could not find '{NpcSpawnPointName}' in prefab children."); }
-            // --- End NPC Spawn Point ---
 
-            // --- 6. Configure Listing Poster ---
+            // --- Configure Listing Poster ---
             Transform listingPoster = FindDeepChild(parentTransform, ListingPosterName);
              if (listingPoster != null)
             {
                 if (manorProperty.ListingPoster == null)
                 {
-                     MelonLogger.Msg($"Assigning Listing Poster '{listingPoster.name}' to Manor.");
-                     manorProperty.ListingPoster = listingPoster;
-                }
-                else
-                {
-                     MelonLogger.Msg("Manor already has a Listing Poster. Skipping assignment.");
+                    MelonLogger.Msg($"Assigning Listing Poster '{listingPoster.name}'.");
+                    manorProperty.ListingPoster = listingPoster;
                 }
             }
             else { MelonLogger.Warning($"Could not find '{ListingPosterName}' in prefab children."); }
-            // --- End Listing Poster ---
 
-
-            MelonLogger.Msg($"--- ManorSetupHelper.ConfigureManorSetup FINISHED ---");
-
-            // Inside the method that handles onThisPropertyAcquired
-            MelonLogger.Msg($"--- Gate Opening Handler ---");
-            ManorGate theManorGate = GameObject.FindObjectOfType<ManorGate>(); // Or however you find it
-            MelonLogger.Msg($"   Found ManorGate instance: {(theManorGate != null ? theManorGate.name : "NULL")}");
-            if (theManorGate != null)
-            {
-                MelonLogger.Msg($"   Calling SetEnterable(true) on gate instance ID: {theManorGate.GetInstanceID()}");
-                theManorGate.SetEnterable(true);
-                 MelonLogger.Msg($"   SetEnterable call completed.");
-            }
-            else
-            {
-                MelonLogger.Error("   Could not find ManorGate instance to call SetEnterable!");
-            }
-             MelonLogger.Msg($"--------------------------");
+            MelonLogger.Msg($"--- ManorSetupHelper configuration FINISHED ---");
 
         } // End ConfigureManorSetup
 
         // --- ADDED: Helper to find the template projector ---
         private static GameObject FindTemplateProjector()
         {
-             MelonLogger.Msg($"--- Finding Template Projector from Bungalow ---");
+            MelonLogger.Msg($"--- Finding Template Projector from Bungalow ---");
             PropertyManager propManager = PropertyManager.Instance;
             if (propManager == null)
             {
