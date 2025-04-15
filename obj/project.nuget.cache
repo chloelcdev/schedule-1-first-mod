@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "yBMI0MIdvyc=",
+  "dgSpecHash": "OXHeQlmQ7Ss=",
   "success": true,
-  "projectFilePath": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ExampleMod.csproj",
+  "projectFilePath": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ChloesManorMod.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\chloe\\.nuget\\packages\\lavagang.melonloader\\0.7.0\\lavagang.melonloader.0.7.0.nupkg.sha512",
     "C:\\Users\\chloe\\.nuget\\packages\\lib.harmony\\2.3.5\\lib.harmony.2.3.5.nupkg.sha512",

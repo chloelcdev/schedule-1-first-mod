@@ -182,9 +182,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ExampleMod.csproj",
-      "projectName": "ExampleMod",
-      "projectPath": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ExampleMod.csproj",
+      "projectUniqueName": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ChloesManorMod.csproj",
+      "projectName": "ChloesManorMod",
+      "projectPath": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ChloesManorMod.csproj",
       "packagesPath": "C:\\Users\\chloe\\.nuget\\packages\\",
       "outputPath": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\obj\\",
       "projectStyle": "PackageReference",
