@@ -135,18 +135,17 @@ namespace ChloesManorMod
 
         private IEnumerator SetupAfterSceneLoad()
         {
-            // LoggerInstance.Msg("SetupAfterSceneLoad: Waiting one frame..."); // Removed
-            yield return null; // Keep the wait
+            // LoggerInstance.Msg("SetupAfterSceneLoad: Waiting one frame...");
+            yield return null;
 
-            // Keep dialogue mod logs if functionality is kept
             if (!dialogueModified)
             {
-                 // ModifyEstateAgentChoicesDirectly(); // Keep call if needed
-                 // FindAndLogEstateAgentEvent(); // Keep call if needed
+                ModifyEstateAgentChoicesDirectly(); // Ensure this line exists and is NOT commented out
+                // FindAndLogEstateAgentEvent(); // Logging call, can remain commented
             }
 
-            LoadPrefabsFromIl2CppBundle(); // Keep errors from this
-            SpawnAndConfigurePrefab(); // Keep essential logs/errors from this
+            LoadPrefabsFromIl2CppBundle();
+            SpawnAndConfigurePrefab();
         }
 
         private void LoadAssetBundleViaManager()
@@ -376,7 +375,7 @@ namespace ChloesManorMod
         }
 
         // Keep dialogue modification methods/logs if that feature is still intended
-        // ModifyEstateAgentChoicesDirectly()
+        //ModifyEstateAgentChoicesDirectly();
         // FindAndLogEstateAgentEvent()
 
         // Remove testing methods if no longer needed
@@ -384,6 +383,193 @@ namespace ChloesManorMod
         // FindDeepChild() // Keep if used by non-test methods
         // LogInstanceDebugInfo()
         // LogManorGateMaterials()
+
+        private void ModifyEstateAgentChoicesDirectly()
+        {
+            // Prevent running multiple times if already successful
+            if (dialogueModified)
+            {
+                LoggerInstance.Msg("ModifyEstateAgentChoicesDirectly: Skipping, dialogue already modified.");
+                return;
+            }
+
+            const string TargetDialogueContainerName = "EstateAgent_Sell";
+            const string PropertyChoiceNodeGuid = "8e2ef594-96d9-43f2-8cfa-6efaea823a56"; // GUID of the node presenting property choices
+
+            LoggerInstance.Msg($"Attempting to modify Ray's '{TargetDialogueContainerName}' dialogue event choices...");
+
+            // --- 1. Find Ray (NPC or Component) ---
+            Component searchTargetComponent = null;
+            Ray rayInstance = GameObject.FindObjectOfType<Ray>(); // Try finding the specific Ray component first
+            if (rayInstance != null)
+            {
+                searchTargetComponent = rayInstance;
+                LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found specific Ray component instance.");
+            }
+            else
+            {
+                // Fallback: Find NPC GameObject named "Ray"
+                LoggerInstance.Warning($"ModifyEstateAgentChoicesDirectly: Could not find specific Ray component. Falling back to finding NPC GameObject named 'Ray'.");
+                NPC[] allNpcs = GameObject.FindObjectsOfType<NPC>();
+                NPC rayNpc = null;
+                foreach (var npc in allNpcs)
+                {
+                    if (npc != null && npc.gameObject != null && npc.gameObject.name.Equals("Ray", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        rayNpc = npc;
+                        break;
+                    }
+                }
+
+                if (rayNpc != null)
+                {
+                    searchTargetComponent = rayNpc;
+                    LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found NPC GameObject named 'Ray'.");
+                }
+                else
+                {
+                    LoggerInstance.Error("ModifyEstateAgentChoicesDirectly: Could not find Ray NPC instance via specific component or GameObject name. Aborting choice modification.");
+                    return; // Cannot proceed without Ray
+                }
+            }
+            // --- End Find Ray ---
+
+            // --- 2. Find the Specific Dialogue Event Component on Ray ---
+            NPCEvent_LocationDialogue targetEventComponent = null;
+            // Search children of the found Ray component/GameObject
+            var locationDialogueEvents = searchTargetComponent.GetComponentsInChildren<Il2CppScheduleOne.NPCs.Schedules.NPCEvent_LocationDialogue>(true); // Include inactive
+
+            if (locationDialogueEvents == null || locationDialogueEvents.Length == 0)
+            {
+                LoggerInstance.Warning($"ModifyEstateAgentChoicesDirectly: No NPCEvent_LocationDialogue components found on Ray ('{searchTargetComponent.gameObject.name}') or his children.");
+                return;
+            }
+
+            LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found {locationDialogueEvents.Length} NPCEvent_LocationDialogue components on '{searchTargetComponent.gameObject.name}'. Checking each...");
+            foreach (var eventComponent in locationDialogueEvents)
+            {
+                // Check if the event component and its DialogueOverride are valid, and if the override name matches
+                if (eventComponent != null && eventComponent.DialogueOverride != null && eventComponent.DialogueOverride.name == TargetDialogueContainerName)
+                {
+                    targetEventComponent = eventComponent;
+                    LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found target event component on '{eventComponent.gameObject.name}' using DialogueOverride '{TargetDialogueContainerName}'.");
+                    break; // Found the correct event
+                }
+                // else if (eventComponent != null) { // Optional: Log skipped events
+                //      string overrideName = (eventComponent.DialogueOverride != null) ? eventComponent.DialogueOverride.name : "NULL";
+                //      LoggerInstance.Msg($" -> Skipping event on '{eventComponent.gameObject.name}'. DialogueOverride: '{overrideName}'");
+                // }
+            }
+
+            if (targetEventComponent == null)
+            {
+                LoggerInstance.Error($"ModifyEstateAgentChoicesDirectly: Could not find the specific NPCEvent_LocationDialogue using '{TargetDialogueContainerName}' on Ray after checking all components.");
+                return; // Cannot proceed without the specific event
+            }
+            // --- End Find Event Component ---
+
+            // --- 3. Modify the Choices in the Specific Container Instance ---
+            DialogueContainer container = targetEventComponent.DialogueOverride; // Use the container *from the specific event instance*!
+            if (container == null)
+            {
+                LoggerInstance.Error("ModifyEstateAgentChoicesDirectly: Target event component's DialogueOverride is null! Cannot modify.");
+                return;
+            }
+
+            LoggerInstance.Msg($"Modifying choices in the specific DialogueContainer instance (Name: {container.name}, ID: {container.GetInstanceID()}) used by Ray's event.");
+
+            // Find the specific node within *this container instance* using its GUID
+            DialogueNodeData choiceNode = null;
+            if (container.DialogueNodeData != null)
+            {
+                // Iterate using index for Il2CppReferenceArray
+                for (int i = 0; i < container.DialogueNodeData.Count; i++)
+                {
+                    var node = container.DialogueNodeData[i];
+                    if (node != null && node.Guid == PropertyChoiceNodeGuid)
+                    {
+                        choiceNode = node;
+                        break;
+                    }
+                }
+            }
+
+            if (choiceNode == null)
+            {
+                LoggerInstance.Error($"Could not find the Property Choice node (GUID: {PropertyChoiceNodeGuid}) within the event's specific container instance ('{container.name}').");
+                return;
+            }
+            LoggerInstance.Msg($"Found Property Choice node: '{choiceNode.DialogueNodeLabel}' (GUID: {choiceNode.Guid}) within the event's container.");
+
+            // Check if ALREADY modified (on *this* instance) to prevent adding duplicate "manor" choices
+            bool alreadyHasManor = false;
+            if (choiceNode.choices != null) // Check if choices array exists
+            {
+                for (int i = 0; i < choiceNode.choices.Count; i++)
+                {
+                    var choice = choiceNode.choices[i];
+                    // Check choice isn't null and label matches "manor"
+                    if (choice != null && choice.ChoiceLabel == "manor")
+                    {
+                        alreadyHasManor = true;
+                        break;
+                    }
+                }
+            }
+
+            if (alreadyHasManor)
+            {
+                LoggerInstance.Msg("Dialogue choices on this specific event container seem to already include 'manor'. Skipping modification.");
+                dialogueModified = true; // Set flag even if skipped, assumes it's correctly modified
+                return;
+            }
+            else
+            {
+                LoggerInstance.Msg($"Choice node '{choiceNode.DialogueNodeLabel}' does not currently contain 'manor' choice. Proceeding with modification.");
+            }
+
+            // --- 4. Create the New, Complete List of Choices ---
+            var newChoicesList = new List<Il2CppScheduleOne.Dialogue.DialogueChoiceData>();
+
+            // Add existing Bungalow choice data
+            newChoicesList.Add(new DialogueChoiceData { Guid = "f3a15b13-14d1-420a-ad17-d731155701d8", ChoiceText = "The Bungalow (<PRICE>)", ChoiceLabel = "bungalow" });
+            // Add existing Barn choice data
+            newChoicesList.Add(new DialogueChoiceData { Guid = "b668ec37-4c92-4949-a113-62d1effdb3b2", ChoiceText = "The Barn (<PRICE>)", ChoiceLabel = "barn" });
+            // Add existing Docks Warehouse choice data
+            newChoicesList.Add(new DialogueChoiceData { Guid = "ad2170b0-1789-4a61-94fb-6ffc2b720252", ChoiceText = "The Docks Warehouse (<PRICE>)", ChoiceLabel = "dockswarehouse" });
+            // Add NEW Manor choice data (Generate a new GUID for it)
+            newChoicesList.Add(new DialogueChoiceData { Guid = System.Guid.NewGuid().ToString(), ChoiceText = "Hilltop Manor (<PRICE>)", ChoiceLabel = "manor" });
+            // Add existing Nevermind choice data
+            newChoicesList.Add(new DialogueChoiceData { Guid = "7406b61c-cb6e-418f-ba2b-bfb28f1b0b70", ChoiceText = "Nevermind", ChoiceLabel = "" });
+            // --- Finished creating new list ---
+
+            // --- 5. Assign the new list back to the node in *this specific container* ---
+            try
+            {
+                // Convert standard List<T> to Il2CppReferenceArray<T> for assignment
+                choiceNode.choices = new Il2CppReferenceArray<DialogueChoiceData>(newChoicesList.ToArray());
+
+                // Verification Log: Check the count and maybe the last item's label right after assignment
+                if (choiceNode.choices != null && choiceNode.choices.Count == 5) // Should now have 5 choices
+                {
+                    string manorLabel = (choiceNode.choices[3] != null) ? choiceNode.choices[3].ChoiceLabel : "NULL_CHOICE"; // Manor is 4th item (index 3)
+                    string lastLabel = (choiceNode.choices[4] != null) ? choiceNode.choices[4].ChoiceLabel : "NULL_CHOICE"; // Nevermind is 5th item (index 4)
+                    LoggerInstance.Msg($"Successfully OVERWROTE choices for node '{choiceNode.DialogueNodeLabel}' within the event's specific container. New count: {choiceNode.choices.Count}. Manor Label: '{manorLabel}', Last Label: '{lastLabel}'.");
+                    dialogueModified = true; // Set flag on success
+                }
+                else
+                {
+                    int currentCount = (choiceNode.choices != null) ? choiceNode.choices.Count : -1; // -1 indicates null array
+                    LoggerInstance.Error($"Assignment failed or resulted in unexpected count! Current count: {currentCount}. Expected 5.");
+                }
+            }
+            catch (System.Exception e)
+            {
+                LoggerInstance.Error($"Error assigning new choices array to the specific event container: {e}");
+                // Potentially reset dialogueModified flag if error handling requires retry logic?
+                // dialogueModified = false;
+            }
+        } // End ModifyEstateAgentChoicesDirectly
 
     } // End partial class MainMod
 } // End namespace
