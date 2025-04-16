@@ -55,3 +55,5 @@ C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj\Debug\net6\refint\ChloesManorMod.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj\Debug\net6\ChloesManorMod.pdb
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj\Debug\net6\ref\ChloesManorMod.dll
+C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Unity.AI.Navigation.dll
+C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.AIModule.dll
