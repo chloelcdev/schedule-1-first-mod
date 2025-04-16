@@ -15,6 +15,9 @@ using System.Reflection;
 using MelonLoader;
 using Il2CppScheduleOne.Misc;
 using UnityEngine;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using ScheduleOne.Buildings; // Assuming Property is here
+using ScheduleOne.Gameplay.Employees; // Assuming Employee is here
 
 
 // Use the same namespace as MainMod
@@ -40,6 +43,8 @@ namespace ChloesManorMod
         private const string LodGOName = "Intercom_LOD0";
         private const string ExtraIdlePointsContainerName = "Extra Employee Idle Points"; // Name of your container
         private const string PropertyIdlePointsGOName = "EmployeeIdlePoints"; // Name of the GO under Property
+        private const string RealtyListingObjectName = "PropertyListing Docks Manor"; // Name of your listing object in the prefab
+        private const string WhiteboardPath = "/Map/Container/RE Office/Interior/Whiteboard"; // Path to the whiteboard
 
         /// <summary>
         /// Main entry point to configure the instantiated Manor setup structure.
@@ -197,6 +202,9 @@ namespace ChloesManorMod
             // --- ADD/MERGE EMPLOYEE IDLE POINTS ---
             ConfigureEmployeeIdlePoints(parentTransform, manorProperty);
             // --- END IDLE POINTS ---
+
+            // --- NEW: Configure the listing at the Realty Office ---
+            ConfigureRealtyListing(spawnedInstanceRoot); // Call the new method
 
             MelonLogger.Msg($"--- ManorSetupHelper configuration FINISHED ---");
 
@@ -463,6 +471,39 @@ namespace ChloesManorMod
             manorProperty.EmployeeIdlePoints = combinedIdlePoints.ToReferenceArray();
             MelonLogger.Msg($"Set Manor EmployeeIdlePoints array. New total count: {manorProperty.EmployeeIdlePoints.Length}");
             MelonLogger.Msg("--------------------------------------");
+        }
+
+        // --- NEW METHOD for Realty Listing ---
+        private static void ConfigureRealtyListing(GameObject prefabRoot)
+        {
+            MelonLogger.Msg("Attempting to configure realty listing...");
+            Transform sourceListing = FindDeepChild(prefabRoot, RealtyListingObjectName);
+            if (sourceListing == null)
+            {
+                MelonLogger.Warning($"Could not find realty listing object '{RealtyListingObjectName}' in prefab.");
+                return;
+            }
+
+            GameObject targetWhiteboard = GameObject.Find(WhiteboardPath);
+            if (targetWhiteboard == null)
+            {
+                MelonLogger.Error($"Could not find target whiteboard object at path '{WhiteboardPath}'. Cannot reparent listing.");
+                return;
+            }
+
+            MelonLogger.Msg($"Found source listing '{sourceListing.name}' and target whiteboard '{targetWhiteboard.name}'. Attempting reparent.");
+
+            try
+            {
+                // Reparent the listing object to the whiteboard.
+                sourceListing.SetParent(targetWhiteboard.transform, true);
+                MelonLogger.Msg($"Successfully reparented '{sourceListing.name}' to '{targetWhiteboard.name}'.");
+            }
+            catch (System.Exception ex) // Qualified Exception
+            {
+                MelonLogger.Error($"Failed to reparent listing object: {ex.Message}");
+                MelonLogger.LogException(ex); // Use MelonLoader's exception logging
+            }
         }
 
     } // End ManorSetupHelper
