@@ -29,8 +29,8 @@ namespace ChloesManorMod // Your actual mod namespace
                     if (npc == null)
                     {
                         MelonLogger.Error("ManorPurchaseEventHandler: NPC is null in StartAction for EstateAgent_Sell event.");
-                return;
-            }
+                        return;
+                    }
 
                     // --- Get the handler from the NPC's public field ---
                     DialogueHandler handler = npc.dialogueHandler; // Use the direct reference
@@ -110,6 +110,11 @@ namespace ChloesManorMod // Your actual mod namespace
                 if (manorProperty == null)
                 {
                     MelonLogger.Error("ManorPurchaseEventHandler: Could not find Manor property instance!");
+                    return;
+                }
+                if (manorProperty.IsOwned)
+                {
+                    MelonLogger.Warning("ManorPurchaseEventHandler: Manor is already owned! Preventing duplicate purchase charge/action.");
                     return;
                 }
                 float manorPrice = manorProperty.Price;
