@@ -139,44 +139,6 @@ namespace ChloesManorMod
 
             MelonLogger.Msg($"--- ManorSetupHelper configuration FINISHED ---");
 
-            MelonLogger.Msg($"--- Aligning Custom NavMesh Surface ---");
-            // Find the GameObject holding the NavMeshSurface component within your prefab
-            // (We could look this up by type, but what if we have more than one later on?)
-            Transform navSurfaceHost = FindDeepChild(spawnedInstanceRoot.transform, "Extra Navigation"); // Or "AtTheProperty", whichever holds the NavMeshSurface
-
-            if (navSurfaceHost != null)
-            {
-                // Check if it actually has the surface component
-                var surface = navSurfaceHost.GetComponent<UnityEngine.AI.NavMeshSurface>(); // Make sure you have the right using for NavMeshSurface
-                if (surface != null && surface.navMeshData != null)
-                {
-                    MelonLogger.Msg($"Found NavMeshSurface host: '{navSurfaceHost.name}' with NavMeshData '{surface.navMeshData.name}'.");
-
-                    // --- THIS IS KEY ---
-                    // Set the *world* position and rotation of the NavMeshSurface host
-                    // to match the Manor property itself. This ensures the loaded NavMesh data
-                    // aligns correctly with the Manor geometry in the world.
-                    navSurfaceHost.position = manorProperty.transform.position;
-                    navSurfaceHost.rotation = manorProperty.transform.rotation;
-                    // --- END KEY PART ---
-
-                    MelonLogger.Msg($"Aligned NavMeshSurface host to Manor property's world transform.");
-
-                    // Optional: Force the NavMeshSurface to update/load if needed, though often automatic
-                    // surface.BuildNavMesh(); // Might not be needed if data is just loaded
-
-                }
-                else
-                {
-                     MelonLogger.Error($"GameObject '{navSurfaceHost.name}' found, but missing NavMeshSurface component or NavMeshData assignment!");
-                }
-            }
-            else
-            {
-                MelonLogger.Error("Could not find the 'Extra Navigation' (or NavMeshSurface host) GameObject within the spawned prefab!");
-            }
-             MelonLogger.Msg($"---------------------------------------");
-
         } // End ConfigureManorSetup
 
         // --- ADDED: Helper to find the template projector ---
