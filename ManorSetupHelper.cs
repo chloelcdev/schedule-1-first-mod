@@ -1,7 +1,6 @@
 // ManorSetupHelper.cs - Static helper class for configuration
 
-using UnityEngine;
-using System.Collections.Generic;
+using Il2CppSystem.Collections.Generic;
 using System.Linq;
 using Il2CppInterop.Runtime; // If needed for casting/helpers
 using Il2CppScheduleOne.Property;
@@ -14,6 +13,9 @@ using Il2CppSystem; // For Guid
 using UnityEngine.Events;
 using System.Reflection;
 using MelonLoader;
+using Il2CppScheduleOne.Misc;
+using UnityEngine;
+
 
 // Use the same namespace as MainMod
 namespace ChloesManorMod
@@ -36,6 +38,8 @@ namespace ChloesManorMod
         private const string TargetSavePointGOName = "Intercom Save Point";
         private const string IntermediateGOName = "Intercom";
         private const string LodGOName = "Intercom_LOD0";
+        private const string ExtraIdlePointsContainerName = "Extra Employee Idle Points"; // Name of your container
+        private const string PropertyIdlePointsGOName = "EmployeeIdlePoints"; // Name of the GO under Property
 
         /// <summary>
         /// Main entry point to configure the instantiated Manor setup structure.
@@ -52,6 +56,7 @@ namespace ChloesManorMod
             }
 
             manorProperty.Price = 150000;
+            manorProperty.EmployeeCapacity = 25;
 
             Transform parentTransform = spawnedInstanceRoot.transform;
             ManorGate manorGate = manorProperty.GetComponentInChildren<ManorGate>();
@@ -76,7 +81,7 @@ namespace ChloesManorMod
             MelonLogger.Msg($"Finding LoadingDock components within '{parentTransform.name}'...");
             var foundDockComponents = parentTransform.GetComponentsInChildren<LoadingDock>(true);
 
-            List<LoadingDock> docksToAdd = new List<LoadingDock>();
+            Il2CppSystem.Collections.Generic.List<LoadingDock> docksToAdd = new();
 
             foreach (LoadingDock existingDockComp in foundDockComponents)
             {
@@ -104,7 +109,7 @@ namespace ChloesManorMod
             if (docksToAdd.Count > 0)
             {
                 MelonLogger.Msg($"Assigning {docksToAdd.Count} configured docks to Manor Property...");
-                manorProperty.LoadingDocks = docksToAdd.ToArray();
+                manorProperty.LoadingDocks = new (docksToAdd.ToArray()); // lookie der
                 MelonLogger.Msg($"Manor assigned {manorProperty.LoadingDocks.Length} LoadingDocks.");
             }
             else { MelonLogger.Warning("No valid LoadingDock components found in prefab to assign to Manor."); }
@@ -136,6 +141,62 @@ namespace ChloesManorMod
                 }
             }
             else { MelonLogger.Warning($"Could not find '{ListingPosterName}' in prefab children."); }
+
+            // --- ADDED: Configure Modular Switches ---
+            MelonLogger.Msg("--- Configuring Modular Switches ---");
+            try
+            {
+                // find all the switches in a format we can use
+
+                // Damn, the extension functions like .ToList and AsEnumerable and such all kinda use System no matter what so we can't use the Il2CppSystem versions which we need to in this case.
+                // later on we can make a function to do this more easily *sigh*
+                Il2CppSystem.Collections.Generic.List<ModularSwitch> foundSwitches = new();
+                foreach (var MSwitch in spawnedInstanceRoot.GetComponentsInChildren<ModularSwitch>(true)) {
+                    foundSwitches.Add(MSwitch);
+                }
+
+                if (foundSwitches != null && foundSwitches.Count > 0)
+                {
+                    // Assign the found switches directly to the Manor's list
+                    manorProperty.Switches = foundSwitches;
+                    MelonLogger.Msg($"Assigned {manorProperty.Switches.Count} ModularSwitch components to Manor property.");
+
+                    // Optional: Add listener for changes if needed (Property.cs does this, maybe redundant)
+                    // foreach (ModularSwitch sw in manorProperty.Switches) {
+                    //     if (sw != null) {
+                    //         // Ensure listener setup is correct based on Property.cs logic if you replicate it
+                    //         sw.onToggled = (ModularSwitch.ButtonChange)Delegate.Combine(sw.onToggled, (ModularSwitch.ButtonChange)delegate {
+                    //             manorProperty.HasChanged = true; // Example: Mark property dirty on toggle
+                    //             // MelonLogger.Msg($"Switch '{sw.name}' toggled, marking property dirty.");
+                    //         });
+                    //     }
+                    // }
+                }
+                else
+                {
+                    MelonLogger.Warning("No ModularSwitch components found within the spawned prefab instance.");
+                    // Ensure the list is at least initialized if none are found
+                    if (manorProperty.Switches == null)
+                        manorProperty.Switches = new ();
+                    else
+                        manorProperty.Switches.Clear(); // Clear if list existed but no switches found now
+                }
+            }
+            catch (System.Exception e)
+            {
+                 MelonLogger.Error($"Error configuring Modular Switches: {e.Message}");
+            }
+            MelonLogger.Msg("----------------------------------");
+            // --- END Configure Modular Switches ---
+
+            // --- Configure Switches and Toggleables AFTER prefab setup is complete ---
+            // --- Search from the MAIN MANOR PROPERTY transform now ---
+            ConfigureSwitchesAndToggleables(manorProperty);
+            // --- End Switch/Toggleable config ---
+
+            // --- ADD/MERGE EMPLOYEE IDLE POINTS ---
+            ConfigureEmployeeIdlePoints(parentTransform, manorProperty);
+            // --- END IDLE POINTS ---
 
             MelonLogger.Msg($"--- ManorSetupHelper configuration FINISHED ---");
 
@@ -304,5 +365,135 @@ namespace ChloesManorMod
              try { return fieldInfo.GetValue(target) as string; } catch { return null; }
         }
 
+        // --- NEW: Combined Switch/Toggleable Logic ---
+        private static void ConfigureSwitchesAndToggleables(Property manorProperty)
+        {
+             MelonLogger.Msg("--- Configuring Switches & Toggleables for Manor ---");
+             // Search starting from the property's main transform to include everything
+             Transform propertyTransform = manorProperty.transform;
+
+             // Switches
+             try
+             {
+                 var foundSwitches = propertyTransform.GetComponentsInChildren<ModularSwitch>(true)?.ToList();
+                 if (foundSwitches != null) // Don't assume Length > 0, just assign if found
+                 {
+                     manorProperty.Switches = foundSwitches;
+                     MelonLogger.Msg($"Assigned {manorProperty.Switches.Count} ModularSwitch components to Manor.");
+                 } else { // Should not happen unless GetComponentsInChildren returns null
+                      MelonLogger.Warning("GetComponentsInChildren<ModularSwitch> returned null unexpectedly.");
+                 }
+             }
+             catch (System.Exception e) { MelonLogger.Error($"Error configuring Modular Switches: {e.Message}"); }
+
+             // Toggleables
+             try
+             {
+                  var foundToggleables = propertyTransform.GetComponentsInChildren<InteractableToggleable>(true).ToList();
+                   if (foundToggleables != null)
+                  {
+                      manorProperty.Toggleables = foundToggleables;
+                      MelonLogger.Msg($"Assigned {manorProperty.Toggleables.Count} InteractableToggleable components to Manor.");
+
+                      // Re-attach listeners AFTER the list is populated, mimicking Property.Awake logic
+                      foreach (InteractableToggleable toggleable in manorProperty.Toggleables)
+                      {
+                          if (toggleable != null)
+                          {
+                               // Use a local function to capture the correct variable instance
+                               void ToggleAction() => PropertyToggleableActioned(manorProperty, toggleable);
+                               // Remove listener first to prevent duplicates if setup runs again
+                               toggleable.onToggle.RemoveListener((UnityEngine.Events.UnityAction)ToggleAction);
+                               toggleable.onToggle.AddListener((UnityEngine.Events.UnityAction)ToggleAction);
+                          }
+                      }
+                       MelonLogger.Msg($"Re-attached listeners for {manorProperty.Toggleables.Count} Toggleables.");
+                  } else {
+                       MelonLogger.Warning("GetComponentsInChildren<InteractableToggleable> returned null unexpectedly.");
+                  }
+             }
+             catch (System.Exception e) { MelonLogger.Error($"Error configuring InteractableToggleables: {e.Message}"); }
+
+             MelonLogger.Msg("--------------------------------------------------");
+        }
+
+         // --- NEW: Static helper mirroring Property's internal ToggleableActioned ---
+         // We need this because the original is an instance method
+         private static void PropertyToggleableActioned(Property propertyInstance, InteractableToggleable toggleable)
+         {
+            if(propertyInstance == null || toggleable == null) return;
+            propertyInstance.HasChanged = true; // Mark dirty
+             // The Property script handles sending the state via RPC itself when initialized,
+             // but we might need to manually trigger the RPC if state changes *after* initial spawn?
+             // For now, just marking dirty might be enough for saving.
+             // Let's test this first before adding RPC calls from here.
+              MelonLogger.Msg($"Toggleable '{toggleable.name}' actioned. Marked Manor Property dirty.");
+         }
+
+        // --- NEW: Method to configure Employee Idle Points ---
+        private static void ConfigureEmployeeIdlePoints(Transform prefabRoot, Property manorProperty)
+        {
+            MelonLogger.Msg("--- Configuring Employee Idle Points ---");
+
+            // 1. Find the container for EXTRA points in the PREFAB
+            // Assuming "Extra Employee Idle Points" is under "AtTheProperty" which is under the root
+            Transform atTheProperty = prefabRoot.Find("AtTheProperty");
+            Transform extraPointsContainer = null;
+            if (atTheProperty != null) {
+                extraPointsContainer = atTheProperty.Find(ExtraIdlePointsContainerName);
+            } // Can also use FindDeepChild if hierarchy is complex/uncertain
+
+            if (extraPointsContainer == null)
+            {
+                MelonLogger.Warning($"Could not find '{ExtraIdlePointsContainerName}' container within prefab. Skipping adding extra idle points.");
+                return; // Nothing to add
+            }
+            MelonLogger.Msg($"Found '{ExtraIdlePointsContainerName}' container in prefab.");
+
+            var combinedIdlePoints = manorProperty.EmployeeIdlePoints.ToList();
+
+            // 3. Add the transforms of the CHILDREN of the extra points container
+            foreach (Transform child in extraPointsContainer)
+                combinedIdlePoints.Add(child);
+
+            MelonLogger.Msg($"Added {extraPointsContainer.childCount} extra idle point transforms from '{ExtraIdlePointsContainerName}'.");
+
+
+            // 4. Assign the combined list back to the Property's array
+            manorProperty.EmployeeIdlePoints = combinedIdlePoints.ToReferenceArray();
+            MelonLogger.Msg($"Set Manor EmployeeIdlePoints array. New total count: {manorProperty.EmployeeIdlePoints.Length}");
+            MelonLogger.Msg("--------------------------------------");
+        }
+
     } // End ManorSetupHelper
+
+
+
+    // --- Extension method to convert Il2CppArrayBase<T> to List<T>. Useful for when you do GetComponentsInChildren and you're trying to set some in-game variable---
+    public static class ToListExtension
+    {
+        // tolist to convert Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<T> to Il2CppSystem.Collections.Generic.List<T>
+        public static Il2CppSystem.Collections.Generic.List<T> ToList<T>(this Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<T> array)
+        {
+            if (array == null) return null;
+            var list = new Il2CppSystem.Collections.Generic.List<T>(array.Length);
+            for (int i = 0; i < array.Length; i++)
+            {
+                list.Add(array[i]);
+            }
+            return list;
+        }
+
+        // toarray to convert Il2CppSystem.Collections.Generic.List<T> to Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<T>
+        public static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<T> ToReferenceArray<T>(this Il2CppSystem.Collections.Generic.List<T> list) where T : Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase
+        {
+            if (list == null) return null;
+            var array = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<T>(list.Count);
+            for (int i = 0; i < list.Count; i++)
+            {
+                array[i] = list[i];
+            }
+            return array;
+        }
+    }
 } // End namespace
