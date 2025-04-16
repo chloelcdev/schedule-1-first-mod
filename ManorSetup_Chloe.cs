@@ -22,6 +22,7 @@ public class ManorSetup_Chloe : MonoBehaviour
     {
         foundManor = FindManor();
 
+
         // assign the property to the loading docks
         foreach (LoadingDock dock in loadingdocks)
             dock.ParentProperty = foundManor;
