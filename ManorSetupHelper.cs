@@ -186,7 +186,7 @@ namespace ChloesManorMod
              return projectorTransform.gameObject; // Return the GameObject
         }
 
-        // --- MODIFIED: Helper to find template Save Point materials ---
+        // --- MODIFIED: Helper to find template Save Point materials WITH SHADER LOGGING ---
         private static Material[] FindTemplateSavePointMaterials()
         {
             MelonLogger.Msg($"--- Finding Template Save Point Materials ---");
@@ -194,30 +194,45 @@ namespace ChloesManorMod
             GameObject templateSavePointGO = GameObject.Find(TemplateSavePointGOName);
             if (templateSavePointGO == null) { MelonLogger.Error($"Could not find template Save Point GO: '{TemplateSavePointGOName}'"); return null; }
 
-            // Find the intermediate "Intercom" child
             Transform intermediateChild = templateSavePointGO.transform.Find(IntermediateGOName);
-            if (intermediateChild == null)
-            {
-                MelonLogger.Error($"Could not find intermediate child '{IntermediateGOName}' under template Save Point '{templateSavePointGO.name}'!");
-                return null;
-            }
+            if (intermediateChild == null) { MelonLogger.Error($"Could not find intermediate child '{IntermediateGOName}' under template '{templateSavePointGO.name}'!"); return null; }
 
-            // Find the LOD child under the intermediate child
             Transform lodChild = intermediateChild.Find(LodGOName);
-            if (lodChild == null)
-            {
-                MelonLogger.Error($"Could not find LOD child '{LodGOName}' under intermediate child '{intermediateChild.name}'!");
-                return null;
-            }
+            if (lodChild == null) { MelonLogger.Error($"Could not find LOD child '{LodGOName}' under intermediate '{intermediateChild.name}'!"); return null; }
 
             MeshRenderer templateRenderer = lodChild.GetComponent<MeshRenderer>();
             if (templateRenderer == null) { MelonLogger.Error($"No MeshRenderer on template LOD child '{lodChild.name}'!"); return null; }
 
+            // Get the materials array (this is a copy)
             Material[] materials = templateRenderer.materials;
             if (materials == null || materials.Length == 0) { MelonLogger.Warning($"Template LOD child '{lodChild.name}' has no materials!"); return null; }
 
             MelonLogger.Msg($"Retrieved {materials.Length} materials from template '{lodChild.name}'.");
-            return materials;
+
+            // ***** ADDED SHADER NAME LOGGING *****
+            MelonLogger.Msg("   Logging TEMPLATE material shaders:");
+            for(int i=0; i < materials.Length; i++)
+            {
+                if (materials[i] != null && materials[i].shader != null)
+                {
+                    // Log the shader name if both material and shader exist
+                    MelonLogger.Msg($"     - Material {i} ('{materials[i].name}'): Shader = '{materials[i].shader.name}'");
+                }
+                else if (materials[i] != null)
+                {
+                    // Log if the material exists but the shader is null
+                     MelonLogger.Msg($"     - Material {i} ('{materials[i].name}'): Shader = NULL");
+                }
+                else
+                {
+                    // Log if the material slot itself is null
+                    MelonLogger.Msg($"     - Material {i}: NULL Material");
+                }
+            }
+            MelonLogger.Msg("   Finished logging template shaders.");
+            // ***** END ADDED LOGGING *****
+
+            return materials; // Return the array of materials
         }
 
         // --- MODIFIED: Helper to apply materials to custom Save Point ---

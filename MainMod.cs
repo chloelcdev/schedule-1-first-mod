@@ -275,6 +275,18 @@ namespace ChloesManorMod
                     // LoggerInstance.Msg("Calling ManorSetupHelper configuration..."); // Removed verbose
                     ManorSetupHelper.ConfigureManorSetup(spawnedInstanceRoot, manorProperty); // Keep errors from helper
                     // LoggerInstance.Msg("ManorSetupHelper configuration called."); // Removed verbose
+
+                    // ***** ADD SHADER FIX CALL HERE *****
+                    try
+                    {
+                         MelonLogger.Msg("Attempting recursive shader fix on spawned instance...");
+                         URPShaderFix.FixShadersRecursive(spawnedInstanceRoot, verboseLogging: false); // Set verboseLogging to true if needed for debug
+                    }
+                    catch(System.Exception e)
+                    {
+                         MelonLogger.Error($"Exception during URPShaderFix execution: {e}");
+                    }
+                    // ***** END SHADER FIX CALL *****
                 }
             }
             else { LoggerInstance.Error("Spawned instance root is null after spawn attempts. Cannot configure."); } // Keep error
