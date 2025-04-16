@@ -29,8 +29,8 @@ namespace ChloesManorMod // Your actual mod namespace
                     if (npc == null)
                     {
                         MelonLogger.Error("ManorPurchaseEventHandler: NPC is null in StartAction for EstateAgent_Sell event.");
-                        return;
-                    }
+                return;
+            }
 
                     // --- Get the handler from the NPC's public field ---
                     DialogueHandler handler = npc.dialogueHandler; // Use the direct reference
@@ -46,7 +46,8 @@ namespace ChloesManorMod // Your actual mod namespace
                     {
                         MelonLogger.Msg($"ManorPurchaseEventHandler: Attaching listener to onDialogueChoiceChosen for handler on {npc.name} (Handler Type: {handler.GetType().FullName}, Instance ID: {handler.GetInstanceID()})");
                         // Cast our static method to Il2CppSystem.Action<string>
-                        handler.onDialogueChoiceChosen.AddListener((UnityEngine.Events.UnityAction<string>)HandleManorChoice);
+                        handle_manor_choice_unityaction = (UnityEngine.Events.UnityAction<string>)HandleManorChoice;
+                        handler.onDialogueChoiceChosen.AddListener(handle_manor_choice_unityaction);
                     }
                     else
                     {
@@ -55,6 +56,8 @@ namespace ChloesManorMod // Your actual mod namespace
                 }
             }
         }
+
+        public static UnityEngine.Events.UnityAction<string> handle_manor_choice_unityaction = null;
 
         // --- Patch to REMOVE listener when the event ends ---
         [HarmonyPatch(typeof(NPCEvent_LocationDialogue), nameof(NPCEvent_LocationDialogue.EndAction))]
@@ -78,7 +81,7 @@ namespace ChloesManorMod // Your actual mod namespace
                             try
                             {
                                 // Remove using the cast delegate type
-                                handler.onDialogueChoiceChosen.RemoveListener((UnityEngine.Events.UnityAction<string>)HandleManorChoice);
+                                handler.onDialogueChoiceChosen.RemoveListener(handle_manor_choice_unityaction);
                                 MelonLogger.Msg($"ManorPurchaseEventHandler: Successfully removed listener.");
                             }
                             catch (System.Exception ex)
