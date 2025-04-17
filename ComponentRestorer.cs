@@ -4,6 +4,27 @@ using System.Collections.Generic;
 using System.Reflection;
 using Il2CppInterop.Runtime;
 using UnityEngine;
+using UnityEngine.Animations;
+using Newtonsoft.Json;
+using UnityEngine.Rendering.Universal;
+
+// --- NEW: Configuration Structures ---
+public class PropertyMap
+{
+    public string JsonPropertyName { get; set; }
+    public string RuntimePropertyName { get; set; }
+    public bool IsMaterial { get; set; } // Special handling for materials?
+    public bool IsEnum { get; set; } // Special handling for enums?
+}
+
+public class ComponentTypeMapping
+{
+    public string JsonTypeName { get; set; } // Full type name from JSON
+    public System.Type RuntimeType { get; set; } // Actual System.Type at runtime
+    public List<PropertyMap> PropertyMappings { get; set; } = new List<PropertyMap>();
+    public Func<GameObject, Component> AddComponentAction { get; set; } // Action to add the component
+}
+// --- END: Configuration Structures ---
 
 // Define simple structures to hold the JSON data
 // NOTE: JsonUtility might require fields to be public or marked with [SerializeField]
@@ -44,10 +65,87 @@ public class PrefabHierarchyData
 
 public static class ComponentRestorer
 {
-    private static Dictionary<string, Il2CppSystem.Type> _targetTypeCache = new Dictionary<string, Il2CppSystem.Type>();
+    // --- NEW: Configuration Table ---
+    private static List<ComponentTypeMapping> _componentMappings = new List<ComponentTypeMapping>();
+    private static bool _mappingsInitialized = false;
+
+    // --- Updated Helper to add mappings in a config-like way ---
+    private static void AddMapping(bool verboseLogging, string jsonTypeName,
+                                   List<PropertyMap> propertyMaps,
+                                   Func<GameObject, Component> addAction)
+    {
+        System.Type runtimeType = FindTypeInLoadedAssemblies(jsonTypeName);
+        if (runtimeType != null)
+        {
+            if (verboseLogging) MelonLogger.Msg($"    - Found runtime type for {jsonTypeName}: {runtimeType.AssemblyQualifiedName}");
+            var mapping = new ComponentTypeMapping {
+                JsonTypeName = jsonTypeName,
+                RuntimeType = runtimeType,
+                PropertyMappings = propertyMaps, // Assign the property maps
+                AddComponentAction = addAction // Assign the add action
+            };
+            _componentMappings.Add(mapping);
+            if (verboseLogging) MelonLogger.Msg($"    - Added mapping for {jsonTypeName} with {mapping.PropertyMappings.Count} property maps.");
+        }
+        else
+        {
+            MelonLogger.Error($"[ComponentRestorer] Could not find runtime System.Type for '{jsonTypeName}'. Mapping initialization failed for this type.");
+        }
+    }
+    // --- END Helper ---
+
+    private static void InitializeMappings(bool verboseLogging)
+    {
+        if (_mappingsInitialized) return;
+        if (verboseLogging) MelonLogger.Msg("[ComponentRestorer] Initializing component type mappings...");
+
+        _componentMappings.Clear();
+
+        // --- Define Mappings using Helper (looks more like config) ---
+
+        // DecalProjector Mapping
+        AddMapping(verboseLogging, "UnityEngine.Rendering.Universal.DecalProjector",
+        /* Property Maps: */ new List<PropertyMap>
+        {
+            new PropertyMap { JsonPropertyName = "drawDistance", RuntimePropertyName = "drawDistance" },
+            new PropertyMap { JsonPropertyName = "fadeScale", RuntimePropertyName = "fadeScale" },
+            new PropertyMap { JsonPropertyName = "startAngleFade", RuntimePropertyName = "startAngleFade" },
+            new PropertyMap { JsonPropertyName = "endAngleFade", RuntimePropertyName = "endAngleFade" },
+            new PropertyMap { JsonPropertyName = "uvScale", RuntimePropertyName = "uvScale" },
+            new PropertyMap { JsonPropertyName = "uvBias", RuntimePropertyName = "uvBias" },
+            new PropertyMap { JsonPropertyName = "renderingLayerMask", RuntimePropertyName = "renderingLayerMask" },
+            new PropertyMap { JsonPropertyName = "pivot", RuntimePropertyName = "pivot" },
+            new PropertyMap { JsonPropertyName = "size", RuntimePropertyName = "size" },
+            new PropertyMap { JsonPropertyName = "fadeFactor", RuntimePropertyName = "fadeFactor" },
+            new PropertyMap { JsonPropertyName = "scaleMode", RuntimePropertyName = "scaleMode", IsEnum = true },
+            new PropertyMap { JsonPropertyName = "materialPath", RuntimePropertyName = "material", IsMaterial = true }
+        },
+        /* Add Action: */ (go) => go.AddComponent<DecalProjector>() // Use specific generic AddComponent<T>
+        );
+
+        // --- Add mappings for other types here using AddMapping() ---
+        /* Example: Rigidbody
+        AddMapping(verboseLogging, "UnityEngine.Rigidbody",
+        new List<PropertyMap> {
+             new PropertyMap { JsonPropertyName = "mass", RuntimePropertyName = "mass" },
+             new PropertyMap { JsonPropertyName = "useGravity", RuntimePropertyName = "useGravity" },
+             // ... other Rigidbody properties ...
+        },
+        (go) => go.AddComponent<Rigidbody>()
+        );
+        */
+
+        _mappingsInitialized = true;
+        if (verboseLogging) MelonLogger.Msg("[ComponentRestorer] Component type mappings initialized.");
+    }
+    // --- END: Configuration Table ---
 
     public static void RestoreComponentsFromJSON(GameObject instantiatedRoot, string jsonContent, bool verboseLogging = false)
     {
+        // --- Initialize Mappings --- 
+        InitializeMappings(verboseLogging); // Ensure mappings are ready
+        // --- 
+
         if (string.IsNullOrEmpty(jsonContent))
         {
             MelonLogger.Error("[ComponentRestorer] JSON content is null or empty. Cannot restore components.");
@@ -57,114 +155,241 @@ public static class ComponentRestorer
         PrefabHierarchyData hierarchyData;
         try
         {
-            // Use Unity's JsonUtility - requires matching public fields or [SerializeField]
-            hierarchyData = UnityEngine.JsonUtility.FromJson<PrefabHierarchyData>(jsonContent);
+            // Use Newtonsoft.Json for deserialization
+            hierarchyData = JsonConvert.DeserializeObject<PrefabHierarchyData>(jsonContent);
             if (hierarchyData == null || hierarchyData.gameObjects == null)
             {
-                MelonLogger.Error("[ComponentRestorer] Failed to deserialize JSON or data is invalid.");
+                MelonLogger.Error("[ComponentRestorer] Failed to deserialize JSON using Newtonsoft.Json or data is invalid.");
                 return;
             }
         }
         catch (System.Exception ex)
         {
-            MelonLogger.Error($"[ComponentRestorer] Error deserializing JSON: {ex.Message}");
+            MelonLogger.Error($"[ComponentRestorer] Error deserializing JSON using Newtonsoft.Json: {ex.Message}");
             return;
         }
 
         MelonLogger.Msg($"[ComponentRestorer] Successfully deserialized hierarchy data with {hierarchyData.gameObjects.Count} GameObject entries.");
 
-        // Build a lookup for instantiated objects by path
+        // Build a lookup for instantiated objects by path, starting from children
         Dictionary<string, GameObject> instantiatedObjects = new Dictionary<string, GameObject>();
-        BuildPathLookup(instantiatedRoot.transform, "", instantiatedObjects);
+        // Start lookup from CHILDREN using an indexed loop for Il2Cpp safety
+        int rootChildCount = instantiatedRoot.transform.childCount;
+        for (int i = 0; i < rootChildCount; i++)
+        {
+            Transform child = instantiatedRoot.transform.GetChild(i);
+            if (child != null) 
+            {
+                BuildPathLookup(child, "", instantiatedObjects);
+            }
+        }
+        
+        // --- REMOVED OLD DEBUG LOGGING of PathDebug --- 
+        // foreach (var go_path in instantiatedObjects.Keys)
+        // {
+        //     if (go_path.ToLower().Contains("walltag"))
+        //         MelonLogger.Msg($"[ComponentRestorer] PathDebug: '{go_path}'");
+        // }
 
         int restoredCount = 0;
+
+        if (verboseLogging) MelonLogger.Msg($"[ComponentRestorer] Built path lookup with {instantiatedObjects.Count} entries. Comparing against JSON...");
 
         // Iterate through the data from JSON
         foreach (GameObjectData goData in hierarchyData.gameObjects)
         {
+            // Find the target GameObject using the path from JSON
             if (!instantiatedObjects.TryGetValue(goData.path, out GameObject targetGO))
             {
-                if (verboseLogging) MelonLogger.Warning($"[ComponentRestorer] Could not find instantiated GameObject at path: '{goData.path}'. Skipping components.");
+                 // Optional: Log only if we *expected* to find it based on components
+                 bool expectedTarget = goData.components.Exists(c => _componentMappings.Exists(m => m.JsonTypeName == c.typeFullName));
+                 if (expectedTarget && verboseLogging) 
+                    MelonLogger.Warning($"[ComponentRestorer] Could not find instantiated GameObject at path relevant for mapped components: '{goData.path}'. Skipping.");
                 continue;
             }
 
+            // --- Process components for this GO using the new mapping logic --- 
             foreach (ComponentData compData in goData.components)
             {
-                // Check if the component *already exists* (maybe it loaded correctly?)
-                // Note: GetComponent(string) might be less reliable than checking type list
-                bool alreadyExists = false;
-                Component[] existingComponents = targetGO.GetComponents<Component>();
-                foreach(var existingComp in existingComponents)
+                // Find the mapping for this component type
+                ComponentTypeMapping mapping = _componentMappings.Find(m => m.JsonTypeName == compData.typeFullName);
+
+                // If no mapping exists for this type, skip it
+                if (mapping == null)
                 {
-                    if (existingComp != null && existingComp.GetType().FullName == compData.typeFullName)
-                    {
-                        alreadyExists = true;
-                        break;
-                    }
+                    // Optional: Log unmapped types if verbose
+                    // if (verboseLogging) MelonLogger.Msg($"[ComponentRestorer] No mapping found for JSON type '{compData.typeFullName}' on '{targetGO.name}'. Skipping.");
+                    continue;
                 }
 
-                if (!alreadyExists)
+                // --- Stricter Check: Iterate through existing components and compare exact Type ---
+                bool exactRuntimeTypeExists = false;
+                Component[] existingComponents = targetGO.GetComponents<Component>(); // Get all components
+                foreach(var existingComp in existingComponents)
                 {
-                    if (verboseLogging) MelonLogger.Msg($"[ComponentRestorer] Component type '{compData.typeFullName}' missing on '{targetGO.name}' (Path: {goData.path}). Attempting restoration...");
-
-                    // Find the target Il2CppType (cache it)
-                    if (!_targetTypeCache.TryGetValue(compData.typeFullName, out Il2CppSystem.Type targetIl2CppType))
+                    if (existingComp != null && existingComp.GetType().AssemblyQualifiedName == mapping.RuntimeType.AssemblyQualifiedName)
                     {
-                        System.Type targetSysType = FindTypeInLoadedAssemblies(compData.typeFullName);
-                        if (targetSysType != null)
-                        {
-                            targetIl2CppType = Il2CppType.From(targetSysType);
-                            if (targetIl2CppType != null)
-                            {
-                                _targetTypeCache[compData.typeFullName] = targetIl2CppType;
-                            }
-                        }
-                        
-                        if (targetIl2CppType == null)
-                        {
-                            MelonLogger.Error($"[ComponentRestorer] Could not find or convert target type '{compData.typeFullName}'. Cannot add component.");
-                            continue; // Skip this component
-                        }
+                        exactRuntimeTypeExists = true;
+                        if (verboseLogging) MelonLogger.Msg($"    - Found existing component with exact runtime type '{mapping.RuntimeType.AssemblyQualifiedName}' on '{targetGO.name}'. Skipping add.");
+                        break; // Found the exact type we want, no need to add
+                    }
+                    // Optional: Log if we find one with the same name but different assembly
+                    else if (verboseLogging && existingComp != null && existingComp.GetType().FullName == mapping.JsonTypeName)
+                    {
+                         MelonLogger.Msg($"    - Found existing component '{existingComp.GetType().AssemblyQualifiedName}' which matches JsonTypeName '{mapping.JsonTypeName}' but NOT the target RuntimeType AQN. Will proceed with adding correct type.");
+                    }
+                }
+                // --- End Stricter Check ---
+
+                // Proceed only if the *exact* runtime type wasn't found
+                if (exactRuntimeTypeExists)
+                {
+                    continue; // Skip to the next component in the JSON data
+                }
+
+                // --- Component is MISSING (the exact runtime type) - Try to add it using the mapping --- 
+                if (verboseLogging) MelonLogger.Msg($"[ComponentRestorer] Mapped component type '{mapping.RuntimeType.Name}' missing on '{targetGO.name}'. Attempting AddComponent via mapped action...");
+
+                try
+                {
+                    // --- Use the stored AddComponentAction --- 
+                    if (mapping.AddComponentAction == null)
+                    {
+                        MelonLogger.Error($"[ComponentRestorer] Mapping for '{mapping.JsonTypeName}' is missing the AddComponentAction delegate on '{targetGO.name}'. Cannot add component.");
+                        continue;
                     }
 
-                    // Add the component
+                    Component addedComponent = mapping.AddComponentAction(targetGO);
+                    // --- 
+
+                    if (addedComponent != null)
+                    {
+                        string addedTypeName = addedComponent.GetType().FullName;
+                        if (verboseLogging) MelonLogger.Msg($"[ComponentRestorer] Successfully added component '{addedTypeName}' (using mapped type '{mapping.RuntimeType.Name}') to '{targetGO.name}'. Applying properties...");
+                        
+                        // Apply properties using the mapping
+                        ApplyPropertiesFromMapping(addedComponent, compData, mapping, verboseLogging);
+                        restoredCount++;
+                    }
+                    else
+                    {
+                        // AddComponent returning null is also a failure scenario
+                         MelonLogger.Error($"[ComponentRestorer] AddComponent(Il2CppType.From('{mapping.RuntimeType.Name}')) returned NULL for '{targetGO.name}'. Restoration failed for this component.");
+                         // Consider falling back to template instantiation here if needed for specific types
+                         // if (mapping.JsonTypeName == "UnityEngine.Rendering.Universal.DecalProjector" && _foundDecalTemplateComponent != null) { /* try template logic */ }
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                     // Catch errors during AddComponent itself
+                     MelonLogger.Error($"[ComponentRestorer] AddComponent failed for type '{mapping.RuntimeType.Name}' on '{targetGO.name}': {ex.Message}");
+                     // Consider fallback here too
+                }
+            }
+        }
+        MelonLogger.Msg($"[ComponentRestorer] Finished component restoration using mappings. Added {restoredCount} missing components.");
+    }
+
+    // --- NEW Method Implementation ---
+    private static void ApplyPropertiesFromMapping(Component target, ComponentData data, ComponentTypeMapping mapping, bool verbose)
+    {
+        if (verbose) MelonLogger.Msg($"    - Applying properties using mapping for {mapping.JsonTypeName}...");
+        System.Type targetRuntimeType = mapping.RuntimeType; // Type of the component we just added
+        System.Type jsonDataType = typeof(ComponentData); // Type of the source data
+
+        foreach (PropertyMap propMap in mapping.PropertyMappings)
+        {
+            try
+            {
+                // Find the property on the actual component (target)
+                PropertyInfo runtimeProp = targetRuntimeType.GetProperty(propMap.RuntimePropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (runtimeProp == null || !runtimeProp.CanWrite)
+                {
+                    if (verbose) MelonLogger.Msg($"      - Skip '{propMap.RuntimePropertyName}': Target property not found or not writable on {targetRuntimeType.Name}.");
+                    continue;
+                }
+
+                // Handle Material separately
+                if (propMap.IsMaterial)
+                {
+                    FieldInfo jsonField = jsonDataType.GetField(propMap.JsonPropertyName, BindingFlags.Instance | BindingFlags.Public);
+                    if (jsonField == null) { 
+                         if (verbose) MelonLogger.Warning($"      - Skip Material: Json field '{propMap.JsonPropertyName}' not found in ComponentData.");
+                         continue; 
+                    }
+                    string materialPath = jsonField.GetValue(data) as string;
+                    Material mat = null;
+                    if (!string.IsNullOrEmpty(materialPath))
+                    {
+                        // TODO: Enhance material loading - check bundle? Allow config?
+                        mat = Resources.Load<Material>(materialPath);
+                        if (mat == null && verbose) MelonLogger.Warning($"     - Could not load material via Resources.Load: '{materialPath}' for property '{propMap.RuntimePropertyName}'");
+                    }
+                    runtimeProp.SetValue(target, mat);
+                    if (verbose) MelonLogger.Msg($"      - Set Material '{propMap.RuntimePropertyName}' to '{mat?.name ?? "null"}' (Loaded from: '{materialPath ?? "N/A"}')");
+                    continue; // Handled material, move to next property
+                }
+
+                // Find the field on the ComponentData object (data)
+                FieldInfo jsonPropField = jsonDataType.GetField(propMap.JsonPropertyName, BindingFlags.Instance | BindingFlags.Public); // Assuming public fields in ComponentData
+                if (jsonPropField == null)
+                {
+                    if (verbose) MelonLogger.Warning($"      - Skip '{propMap.JsonPropertyName}': Source field not found in ComponentData.");
+                    continue;
+                }
+
+                // Get the value from the ComponentData
+                object valueToSet = jsonPropField.GetValue(data);
+
+                // Handle Enum separately
+                if (propMap.IsEnum)
+                {
                     try
                     {
-                        Component newComponent = targetGO.AddComponent(targetIl2CppType);
-                        if (newComponent != null)
-                        {
-                            restoredCount++;
-                             MelonLogger.Msg($"[ComponentRestorer] Added component '{newComponent.GetType().FullName}' to '{targetGO.name}'. Applying properties...");
-                            // Apply properties from JSON data
-                            ApplyDecalPropertiesFromData(newComponent, compData, verboseLogging);
-                        }
-                        else
-                        {
-                            MelonLogger.Error($"[ComponentRestorer] AddComponent returned null for type '{targetIl2CppType.FullName}' on '{targetGO.name}'.");
-                        }
+                        // Assuming the JSON stores the enum as its underlying int value
+                        object enumValue = System.Enum.ToObject(runtimeProp.PropertyType, valueToSet);
+                        runtimeProp.SetValue(target, enumValue);
+                        if (verbose) MelonLogger.Msg($"      - Set Enum '{propMap.RuntimePropertyName}' to {enumValue} (from JSON value {valueToSet})");
                     }
                     catch (System.Exception ex)
                     {
-                        MelonLogger.Error($"[ComponentRestorer] Error adding component '{compData.typeFullName}' to '{targetGO.name}': {ex.Message}");
+                         MelonLogger.Warning($"[ComponentRestorer] Failed to set Enum property '{propMap.RuntimePropertyName}': {ex.Message}");
                     }
                 }
-                 else if (verboseLogging)
-                 {
-                      MelonLogger.Msg($"[ComponentRestorer] Component type '{compData.typeFullName}' already exists on '{targetGO.name}' (Path: {goData.path}). Skipping restoration.");
-                 }
+                // Handle standard types
+                else
+                {
+                    // Attempt direct assignment (might need type conversion checks for robustness)
+                    runtimeProp.SetValue(target, valueToSet);
+                    if (verbose) MelonLogger.Msg($"      - Set '{propMap.RuntimePropertyName}' to {valueToSet?.ToString() ?? "null"}.");
+                }
+            }
+            catch (System.Exception ex)
+            {
+                MelonLogger.Warning($"[ComponentRestorer] Failed to set property '{propMap.RuntimePropertyName}' using mapping from '{propMap.JsonPropertyName}': {ex.Message}");
             }
         }
-        MelonLogger.Msg($"[ComponentRestorer] Finished component restoration. Added {restoredCount} missing components.");
+        if (verbose) MelonLogger.Msg($"    - Finished applying properties for {mapping.JsonTypeName}.");
     }
 
     // Recursive helper to build path lookup
     private static void BuildPathLookup(Transform current, string currentPath, Dictionary<string, GameObject> lookup)
     {
+        // Safety check for the current transform itself
+        if (current == null) return;
+
         string path = string.IsNullOrEmpty(currentPath) ? current.name : currentPath + "/" + current.name;
         lookup[path] = current.gameObject;
-        foreach (Transform child in current)
+
+        // Iterate using index instead of foreach for Il2Cpp safety
+        int childCount = current.childCount;
+        for (int i = 0; i < childCount; i++)
         {
-            BuildPathLookup(child, path, lookup);
+            Transform child = current.GetChild(i);
+            if (child != null) // Add null check for child just in case
+            {
+                BuildPathLookup(child, path, lookup);
+            }
         }
     }
 
@@ -178,85 +403,5 @@ public static class ComponentRestorer
             catch { /* Ignore */ }
         }
         return null;
-    }
-
-    // Specific method to apply Decal properties from JSON data
-    private static void ApplyDecalPropertiesFromData(Component target, ComponentData data, bool verbose)
-    {
-        System.Type targetType = target.GetType();
-        if (verbose) MelonLogger.Msg($"    - Applying properties to {targetType.FullName}:");
-
-        // Apply basic value types directly
-        SetProperty(target, targetType, "drawDistance", data.drawDistance, verbose);
-        SetProperty(target, targetType, "fadeScale", data.fadeScale, verbose);
-        SetProperty(target, targetType, "startAngleFade", data.startAngleFade, verbose);
-        SetProperty(target, targetType, "endAngleFade", data.endAngleFade, verbose);
-        SetProperty(target, targetType, "uvScale", data.uvScale, verbose);
-        SetProperty(target, targetType, "uvBias", data.uvBias, verbose);
-        SetProperty(target, targetType, "renderingLayerMask", data.renderingLayerMask, verbose);
-        SetProperty(target, targetType, "pivot", data.pivot, verbose);
-        SetProperty(target, targetType, "size", data.size, verbose);
-        SetProperty(target, targetType, "fadeFactor", data.fadeFactor, verbose);
-
-        // Apply Enum (ScaleMode)
-        try
-        {
-            PropertyInfo scaleModeProp = targetType.GetProperty("scaleMode", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (scaleModeProp != null && scaleModeProp.CanWrite)
-            {
-                // Assuming DecalScaleMode enum underlying type is int
-                object enumValue = System.Enum.ToObject(scaleModeProp.PropertyType, data.scaleMode);
-                scaleModeProp.SetValue(target, enumValue);
-                if (verbose) MelonLogger.Msg($"      - Set 'scaleMode' to {(UnityEngine.Rendering.Universal.DecalScaleMode)enumValue}");
-            }
-            else if (verbose) MelonLogger.Msg($"      - Skip 'scaleMode': Target property not found or not writable.");
-        }
-        catch (System.Exception ex) { MelonLogger.Warning($"[ComponentRestorer] Failed to set property 'scaleMode': {ex.Message}"); }
-
-        // Apply Material
-        try
-        {
-            PropertyInfo matProp = targetType.GetProperty("material", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            if (matProp != null && matProp.CanWrite)
-            {
-                Material mat = null;
-                if (!string.IsNullOrEmpty(data.materialPath))
-                {
-                    // Attempt to load material - THIS IS THE TRICKY PART
-                    // Option 1: Resources.Load (if material is in a Resources folder in *your* bundle)
-                     mat = Resources.Load<Material>(data.materialPath); 
-                     if (mat == null && verbose) MelonLogger.Warning($"     - Could not load material via Resources.Load: '{data.materialPath}'");
-
-                    // Option 2: Load from the bundle directly (if you know its exact asset name/path)
-                    // if (mat == null && YourModMain.il2cppCustomAssetsBundle != null) { 
-                    //    mat = YourModMain.il2cppCustomAssetsBundle.LoadAsset<Material>(data.materialPath);
-                    //    if (mat == null && verbose) MelonLogger.Warning($"     - Could not load material via Bundle.LoadAsset: '{data.materialPath}'");
-                    // }
-                }
-                matProp.SetValue(target, mat); // Set even if null
-                if (verbose) MelonLogger.Msg($"      - Set 'material' to '{mat?.name ?? "null"}' (Loaded from: '{data.materialPath ?? "N/A"}')");
-            }
-             else if (verbose) MelonLogger.Msg($"      - Skip 'material': Target property not found or not writable.");
-        }
-        catch (System.Exception ex) { MelonLogger.Warning($"[ComponentRestorer] Failed to set property 'material': {ex.Message}"); }
-    }
-
-    // Generic helper to set a property via reflection
-    private static void SetProperty(Component target, System.Type targetType, string propName, object value, bool verbose)
-    {
-        PropertyInfo prop = targetType.GetProperty(propName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-        if (prop != null && prop.CanWrite)
-        {
-            try
-            {
-                prop.SetValue(target, value);
-                if (verbose) MelonLogger.Msg($"      - Set '{propName}' to {value?.ToString() ?? "null"}.");
-            }
-            catch (System.Exception ex)
-            {
-                MelonLogger.Warning($"[ComponentRestorer] Failed to set property '{propName}': {ex.Message}");
-            }
-        }
-         else if (verbose) MelonLogger.Msg($"      - Skip '{propName}': Target property not found or not writable.");
     }
 } 

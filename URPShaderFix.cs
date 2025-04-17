@@ -1,6 +1,11 @@
 using UnityEngine;
 using MelonLoader; // Or your logging namespace
 using System.Collections.Generic; // <<< NEEDED for Dictionary and List
+// using UnityEngine.Rendering.Universal; // May need this - REMOVED for Il2Cpp compatibility
+using System.Reflection; // Needed for Reflection
+using Il2CppInterop.Runtime; // Needed for Il2CppType.From
+using FluffyUnderware;
+// using Il2CppInterop.Runtime; // Not strictly needed if we use System.Type for AddComponent
 
 public static class URPShaderFix
 {
@@ -203,5 +208,165 @@ public static class URPShaderFix
 
         if (totalFixedCount > 0) { MelonLogger.Msg($"[URPShaderFix] Finished. Applied shader fixes to {totalFixedCount} material instances under '{rootObject.name}'."); }
         else if (verboseLogging) { MelonLogger.Msg($"[URPShaderFix] Finished check under '{rootObject.name}'. No shader changes required based on config."); }
+    }
+
+    // --- NEW METHOD FOR FIXING DECAL PROJECTORS ---
+    public static void FixDecalProjectorsRecursive(Transform root, bool verboseLogging = false)
+    {
+        MelonLogger.Msg("[URPShaderFix] Starting Decal Projector fix...");
+        int fixedCount = 0;
+        int foundCount = 0;
+
+        // --- Find the Target DecalProjector Type using Reflection --- 
+        string targetTypeName = "UnityEngine.Rendering.Universal.DecalProjector"; // Adjust if game uses different assembly/namespace
+        System.Type targetSysType = FindTypeInLoadedAssemblies(targetTypeName);
+        if (targetSysType == null)
+        {
+            MelonLogger.Error($"[URPShaderFix] Could not find the target System.Type for '{targetTypeName}' in loaded assemblies! Aborting decal fix.");
+            return;
+        }
+        MelonLogger.Msg($"[URPShaderFix] Found target System.Type: {targetSysType.FullName}. Converting to Il2CppSystem.Type...");
+
+        // --- Convert to Il2CppSystem.Type for AddComponent --- 
+        Il2CppSystem.Type targetDecalIl2CppType = Il2CppType.From(targetSysType);
+        if (targetDecalIl2CppType == null)
+        {
+            MelonLogger.Error($"[URPShaderFix] Failed to convert System.Type '{targetSysType.FullName}' to Il2CppSystem.Type! Aborting decal fix.");
+            return;
+        }
+         MelonLogger.Msg($"[URPShaderFix] Successfully converted to Il2CppSystem.Type: {targetDecalIl2CppType.FullName}");
+        // --- End Type Conversion ---
+
+        // Iterate through all components in the hierarchy
+        Component[] allComponents = root.GetComponentsInChildren<Component>(true);
+        string sourceTypeName = "UnityEngine.Renderer.DecalProjector"; // The type name from YOUR bundle
+
+        if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Scanning {allComponents.Length} components under '{root.name}'...");
+
+        foreach (Component component in allComponents)
+        {
+            if (component == null) continue;
+
+            // --- DEBUG LOGGING --- 
+            if (verboseLogging) 
+            {
+                 // Log type name for all components if verbose, or just likely candidates
+                 // Example: Only log if the name might be related to Decal
+                 if (component.GetType().Name.ToLower().Contains("decal"))
+                 {
+                     MelonLogger.Msg($"    - Found component: '{component.gameObject.name}' -> Type: {component.GetType().FullName}");
+                 }
+            }
+            // --- END DEBUG LOGGING ---
+
+            // Check if the component's type name matches the one from the bundle
+            if (component.GetType().FullName == sourceTypeName)
+            {
+                foundCount++;
+                GameObject go = component.gameObject;
+                MelonLogger.Msg($"[URPShaderFix] Found potential source DecalProjector on '{go.name}'. Attempting replacement...");
+
+                try
+                {
+                    // Add the *target* game's DecalProjector component using the Il2CppSystem.Type
+                    Component newDecalComponent = go.AddComponent(targetDecalIl2CppType);
+                    if (newDecalComponent == null)
+                    {
+                        // This should ideally not fail now if the Il2CppType was valid
+                        MelonLogger.Error($"[URPShaderFix] AddComponent failed using converted Il2CppType '{targetDecalIl2CppType.FullName}' on '{go.name}'. Skipping.");
+                        continue;
+                    }
+
+                    MelonLogger.Msg($"[URPShaderFix] Successfully added component of type '{newDecalComponent.GetType().FullName}' to '{go.name}'. Copying properties...");
+
+                    // Copy properties using Reflection
+                    CopyDecalProperties(component, newDecalComponent, verboseLogging);
+
+                    // Destroy the old, incompatible component
+                    UnityEngine.Object.DestroyImmediate(component);
+                    fixedCount++;
+                    MelonLogger.Msg($"[URPShaderFix] Successfully replaced DecalProjector on '{go.name}'.");
+                }
+                catch (System.Exception ex)
+                {
+                    MelonLogger.Error($"[URPShaderFix] Error replacing DecalProjector on '{go.name}': {ex.Message}");
+                }
+            }
+        }
+
+        MelonLogger.Msg($"[URPShaderFix] Decal Projector fix finished. Found: {foundCount}, Replaced: {fixedCount}.");
+    }
+
+    // Helper to find a type by name across all loaded assemblies (RESTORED)
+    private static System.Type FindTypeInLoadedAssemblies(string typeFullName)
+    {
+        System.Type foundType = null;
+        foreach (Assembly assembly in System.AppDomain.CurrentDomain.GetAssemblies())
+        {
+            try
+            {
+                 foundType = assembly.GetType(typeFullName);
+                 if (foundType != null) {
+                     return foundType; // Found it
+                 }
+            }
+            catch
+            { 
+                // Ignore assemblies that throw errors on GetType (e.g., dynamic assemblies)
+            }
+        }
+        return null; // Not found
+    }
+
+    // Helper to copy properties via Reflection
+    private static void CopyDecalProperties(Component source, Component target, bool verbose)
+    {
+        // List of specific Decal Projector properties to copy based on user request
+        string[] propertiesToCopy = { 
+            "material", 
+            "drawDistance", 
+            "fadeScale", 
+            "startAngleFade", 
+            "endAngleFade", 
+            "uvScale", 
+            "uvBias", 
+            "renderingLayerMask", // Maps to "Decal Layer Mask"
+            "scaleMode", 
+            "pivot",              // Maps to "Offset"
+            "size", 
+            "fadeFactor"
+         };
+
+        System.Type sourceType = source.GetType();
+        System.Type targetType = target.GetType();
+
+        if (verbose) MelonLogger.Msg($"    - Attempting to copy properties from {sourceType.FullName} to {targetType.FullName}:");
+
+        foreach (string propName in propertiesToCopy)
+        {
+            PropertyInfo sourceProp = sourceType.GetProperty(propName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            PropertyInfo targetProp = targetType.GetProperty(propName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (sourceProp != null && targetProp != null && targetProp.CanWrite && sourceProp.PropertyType == targetProp.PropertyType)
+            {
+                try
+                {
+                    object value = sourceProp.GetValue(source);
+                    targetProp.SetValue(target, value);
+                    if (verbose) MelonLogger.Msg($"      - Copied '{propName}' (Value: {value?.ToString() ?? "null"}).");
+                }
+                catch (System.Exception ex)
+                {
+                    MelonLogger.Warning($"[URPShaderFix] Failed to copy property '{propName}': {ex.Message}");
+                }
+            }
+            else if (verbose)
+            { // Log reasons for skipping
+                if (sourceProp == null) MelonLogger.Msg($"      - Skip '{propName}': Source property not found.");
+                else if (targetProp == null) MelonLogger.Msg($"      - Skip '{propName}': Target property not found.");
+                else if (!targetProp.CanWrite) MelonLogger.Msg($"      - Skip '{propName}': Target property not writable.");
+                else if (sourceProp.PropertyType != targetProp.PropertyType) MelonLogger.Msg($"      - Skip '{propName}': Type mismatch (Source: {sourceProp.PropertyType.Name}, Target: {targetProp.PropertyType.Name}).");
+            }
+        }
     }
 }

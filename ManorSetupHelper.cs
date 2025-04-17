@@ -28,7 +28,7 @@ namespace ChloesManorMod
         private const string AtThePropertyName = "AtTheProperty";
         private const string AtTheRealtyName = "AtTheRealty";
         private const string DockPlaceholderPrefix = "Loading Dock ";
-        private const string SavePointPlaceholderName = "SavePoint";        
+        private const string SavePointPlaceholderName = "SavePoint";
         private const string NpcSpawnPointName = "NPCSpawn";
         private const string BungalowPropertyCode = "bungalow"; // Property code for the bungalow
         // --- Names for Save Point Stealing ---

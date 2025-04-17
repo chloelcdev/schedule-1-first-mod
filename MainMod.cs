@@ -50,7 +50,7 @@ namespace ChloesManorMod
     public partial class MainMod : MelonMod
     {
         private static Il2CppAssetBundle il2cppCustomAssetsBundle;
-        private static GameObject manorSetupPrefab;
+    private static GameObject manorSetupPrefab;
 
         private const string BundleName = "chloemanorsetup";
         private const string PrefabName = "ManorSetup-Chloe";
@@ -66,8 +66,8 @@ namespace ChloesManorMod
 
         private static bool dialogueModified = false;
 
-        public override void OnInitializeMelon()
-        {
+    public override void OnInitializeMelon()
+    {
             LoggerInstance.Msg($"{BuildInfo.Name} v{BuildInfo.Version} Initializing...");
             LoadAssetBundleViaManager();
             LogURPVersion(); // Keep URP version log - useful for compatibility info
@@ -118,13 +118,13 @@ namespace ChloesManorMod
             }
             catch (System.Exception e) { LoggerInstance.Error($"Exception while checking URP version: {e}"); }
             LoggerInstance.Msg("----------------------------"); // Shortened
-        }
+    }
 
-        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
-        {
+    public override void OnSceneWasLoaded(int buildIndex, string sceneName)
+    {
             // LoggerInstance.Msg($"Scene loaded: {sceneName}"); // Can usually remove this
-            if (sceneName == TargetSceneName)
-            {
+        if (sceneName == TargetSceneName)
+        {
                 MelonCoroutines.Start(SetupAfterSceneLoad());
             }
             else
@@ -153,9 +153,9 @@ namespace ChloesManorMod
             if (il2cppCustomAssetsBundle != null) return;
 
             // LoggerInstance.Msg($"Loading AssetBundle '{BundleName}' via Il2CppAssetBundleManager..."); // Removed verbose
-            try
-            {
-                Assembly assembly = Assembly.GetExecutingAssembly();
+        try
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
                 string resourceName = $"{typeof(MainMod).Namespace}.{BundleName}";
 
                 using (System.IO.Stream stream = assembly.GetManifestResourceStream(resourceName))
@@ -256,86 +256,79 @@ namespace ChloesManorMod
             // Parenting and Configuration
             if (spawnedInstanceRoot != null)
             {
-                Property manorProperty = FindManor();
-                if (manorProperty == null) { LoggerInstance.Error("Manor property not found post-spawn. Cannot configure."); } // Keep error
-                else
+                // --- Load Hierarchy JSON ---
+                string hierarchyJson = null;
+                TextAsset jsonTextAsset = null;
+                if (il2cppCustomAssetsBundle != null) // Make sure bundle is loaded
                 {
-                    // LoggerInstance.Msg($"Found Manor property '{manorProperty.PropertyName}'. Parenting '{spawnedInstanceRoot.name}'..."); // Removed verbose parenting log
                     try
                     {
-                        // Use worldPositionStays = true as last requested, KEEP THIS LOG to confirm behavior
-                        spawnedInstanceRoot.transform.SetParent(manorProperty.transform, true);
-                        LoggerInstance.Msg($"Parented '{spawnedInstanceRoot.name}' to Manor (worldPositionStays=true).");
-                        // LoggerInstance.Msg($"   New Local Position: {spawnedInstanceRoot.transform.localPosition}"); // Maybe remove detailed pos
-                        // LoggerInstance.Msg($"   New World Position: {spawnedInstanceRoot.transform.position}"); // Maybe remove detailed pos
-                    }
-                    catch (System.Exception e) { LoggerInstance.Error($"Exception during SetParent: {e}"); return; } // Keep error
-
-                    // --- Load Hierarchy JSON ---
-                    string hierarchyJson = null;
-                    TextAsset jsonTextAsset = null;
-                    if (il2cppCustomAssetsBundle != null) // Make sure bundle is loaded
-                    {
-                        try
+                        jsonTextAsset = il2cppCustomAssetsBundle.LoadAsset<TextAsset>("PreBundleBuildHierarchy");
+                        if (jsonTextAsset != null)
                         {
-                            // Load the TextAsset (adjust name if different)
-                            jsonTextAsset = il2cppCustomAssetsBundle.LoadAsset<TextAsset>("PreBundleBuildHierarchy");
-                            if (jsonTextAsset != null)
-                            {
-                                hierarchyJson = jsonTextAsset.text;
-                                MelonLogger.Msg("[MainMod] Loaded PreBundleBuildHierarchy.json TextAsset from bundle.");
-                            }
-                            else { MelonLogger.Warning("[MainMod] Could not find 'PreBundleBuildHierarchy' TextAsset in the bundle."); }
+                            hierarchyJson = jsonTextAsset.text;
+                            MelonLogger.Msg("[MainMod] Loaded PreBundleBuildHierarchy.json TextAsset from bundle.");
                         }
-                        catch (System.Exception e) { MelonLogger.Error($"[MainMod] Error loading TextAsset from bundle: {e.Message}"); }
+                        else { MelonLogger.Warning("[MainMod] Could not find 'PreBundleBuildHierarchy' TextAsset in the bundle."); }
                     }
-                     else { MelonLogger.Error("[MainMod] Cannot load hierarchy JSON, asset bundle is null."); }
-                    // --- End Load JSON ---
+                    catch (System.Exception e) { MelonLogger.Error($"[MainMod] Error loading TextAsset from bundle: {e.Message}"); }
+                }
+                 else { MelonLogger.Error("[MainMod] Cannot load hierarchy JSON, asset bundle is null."); }
+                // --- End Load JSON ---
 
-                    // --- Component Restoration ---
-                    if (!string.IsNullOrEmpty(hierarchyJson))
+                // --- Component Restoration ---
+                if (!string.IsNullOrEmpty(hierarchyJson))
+                {
+                    MelonLogger.Msg("[MainMod] Attempting component restoration from JSON BEFORE parenting...");
+                    // Pass the root transform directly, path lookup starts from here
+                    ComponentRestorer.RestoreComponentsFromJSON(spawnedInstanceRoot, hierarchyJson, verboseLogging: true); 
+                }
+                // --- End Component Restoration ---
+
+                // Now find the parent AFTER restoration
+                Property manorProperty = FindManor();
+                if (manorProperty == null) { 
+                    MelonLogger.Error("Manor property not found post-spawn/restoration. Cannot parent or configure further."); 
+                    // Consider destroying spawnedInstanceRoot if parenting fails?
+                    // UnityEngine.Object.Destroy(spawnedInstanceRoot);
+                    // spawnedInstanceRoot = null;
+                 }
+                else
+                {
+                    // --- Parenting ---
+                    try
                     {
-                        try
-                        {
-                             MelonLogger.Msg("[MainMod] Attempting component restoration from JSON...");
-                            ComponentRestorer.RestoreComponentsFromJSON(spawnedInstanceRoot, hierarchyJson, verboseLogging: true); // Set verbose true/false
-                        }
-                         catch(System.Exception e) { MelonLogger.Error($"[MainMod] Exception during ComponentRestorer execution: {e}"); }
+                       spawnedInstanceRoot.transform.SetParent(manorProperty.transform, true);
+                       MelonLogger.Msg($"Parented '{spawnedInstanceRoot.name}' to Manor (worldPositionStays=true) AFTER component restoration.");
+        }
+        catch (System.Exception e) {
+                        MelonLogger.Error($"Exception during SetParent: {e}"); 
+                        // Consider destroying instance if parenting fails
+                        return; 
                     }
-                    // --- End Component Restoration ---
-
-                    // ***** MOVED SHADER FIX CALL HERE *****
+                    // --- End Parenting ---
+                    
+                    // --- Shader Fix --- 
                     try
                     {
                          MelonLogger.Msg("Attempting recursive shader fix BEFORE helper configuration...");
-                         // Ensure spawnedInstanceRoot is passed correctly if the method expects GameObject
                          URPShaderFix.FixShadersRecursive(spawnedInstanceRoot); // Pass GameObject directly
                          MelonLogger.Msg("Shader fix applied recursively to spawned instance.");
                     }
                     catch(System.Exception e)
                     {
                          MelonLogger.Error($"Exception during URPShaderFix execution: {e}");
-                         // Decide if we should return or continue if shader fix fails
                          // return; 
                     }
-                    // ***** END SHADER FIX CALL *****
+                    // --- END SHADER FIX CALL ---
 
-                    // --- Decal Fix (Old Method - Now handled by ComponentRestorer) ---
-                    /*
-                    try
-                    {
-                        // URPShaderFix.FixDecalProjectorsRecursive(...); // COMMENT OUT or REMOVE this call
-                    }
-                     catch(System.Exception e) { // Error log }
-                    */
-
-                    // Call Configuration Helper AFTER shader and decal fixes
-                    // LoggerInstance.Msg("Calling ManorSetupHelper configuration..."); // Removed verbose
-                    ManorSetupHelper.ConfigureManorSetup(spawnedInstanceRoot, manorProperty); // Keep errors from helper
-                    // LoggerInstance.Msg("ManorSetupHelper configuration called."); // Removed verbose
+                    // --- Final Configuration Helper ---
+                    // LoggerInstance.Msg("Calling ManorSetupHelper configuration..."); 
+                    ManorSetupHelper.ConfigureManorSetup(spawnedInstanceRoot, manorProperty); 
+                    // LoggerInstance.Msg("ManorSetupHelper configuration called."); 
                 }
             }
-            else { LoggerInstance.Error("Spawned instance root is null after spawn attempts. Cannot configure."); } // Keep error
+            else { MelonLogger.Error("Spawned instance root is null after spawn attempts. Cannot configure."); } 
         }
 
         Property FindManor()
@@ -520,8 +513,8 @@ namespace ChloesManorMod
             if (locationDialogueEvents == null || locationDialogueEvents.Length == 0)
             {
                 LoggerInstance.Warning($"ModifyEstateAgentChoicesDirectly: No NPCEvent_LocationDialogue components found on Ray ('{searchTargetComponent.gameObject.name}') or his children.");
-                return;
-            }
+            return;
+        }
 
             LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found {locationDialogueEvents.Length} NPCEvent_LocationDialogue components on '{searchTargetComponent.gameObject.name}'. Checking each...");
             foreach (var eventComponent in locationDialogueEvents)
@@ -551,8 +544,8 @@ namespace ChloesManorMod
             if (container == null)
             {
                 LoggerInstance.Error("ModifyEstateAgentChoicesDirectly: Target event component's DialogueOverride is null! Cannot modify.");
-                return;
-            }
+            return;
+        }
 
             LoggerInstance.Msg($"Modifying choices in the specific DialogueContainer instance (Name: {container.name}, ID: {container.GetInstanceID()}) used by Ray's event.");
 

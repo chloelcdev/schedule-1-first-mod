@@ -32,8 +32,6 @@ C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.TextCoreTextEngineModule.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Unity.RenderPipeline.Universal.ShaderLibrary.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Unity.Mathematics.dll
-C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Unity.Burst.dll
-C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Unity.Collections.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.XRModule.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.InputModule.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Il2CppMono.Security.dll
@@ -57,3 +55,4 @@ C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj\Debug\net6\ref\ChloesManorMod.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Unity.AI.Navigation.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.AIModule.dll
+C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Newtonsoft.Json.dll
