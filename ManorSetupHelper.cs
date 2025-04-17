@@ -34,6 +34,7 @@ namespace ChloesManorMod
         // --- Names for Save Point Stealing ---
         private const string TemplateSavePointGOName = "Intercom Save Point";
         private const string TargetSavePointGOName = "Intercom Save Point";
+
         private const string IntermediateGOName = "Intercom";
         private const string LodGOName = "Intercom_LOD0";
         private const string ExtraIdlePointsContainerName = "Extra Employee Idle Points"; // Name of your container
