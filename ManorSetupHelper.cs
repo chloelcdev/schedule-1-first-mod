@@ -2,22 +2,21 @@
 
 using Il2CppSystem.Collections.Generic;
 using System.Linq;
-using Il2CppInterop.Runtime; // If needed for casting/helpers
+using Il2CppInterop.Runtime;
 using Il2CppScheduleOne.Property;
 using Il2CppScheduleOne.Delivery;
 using Il2CppScheduleOne.Persistence;
 using Il2CppScheduleOne.Map;
 using Il2CppScheduleOne.Interaction;
 using Il2CppScheduleOne.Tiles;
-using Il2CppSystem; // For Guid
+using Il2CppSystem;
 using UnityEngine.Events;
 using System.Reflection;
 using MelonLoader;
 using Il2CppScheduleOne.Misc;
 using UnityEngine;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using ScheduleOne.Buildings; // Assuming Property is here
-using ScheduleOne.Gameplay.Employees; // Assuming Employee is here
+using Il2CppScheduleOne.Employees;
 
 
 // Use the same namespace as MainMod
@@ -29,12 +28,8 @@ namespace ChloesManorMod
         private const string AtThePropertyName = "AtTheProperty";
         private const string AtTheRealtyName = "AtTheRealty";
         private const string DockPlaceholderPrefix = "Loading Dock ";
-        private const string NpcSpawnPlaceholderName = "NPCSpawn";
-        private const string ListingPosterPlaceholderName = "PropertyListing Docks Manor";
-        private const string SavePointPlaceholderName = "SavePoint";
-        private const string ManorGatePlaceholderName = "ManorGatePos"; // todo: do this, it shouldn't be attached like this
-        private const string NpcSpawnPointName = "NPC Spawn Point";
-        private const string ListingPosterName = "Listing Poster";
+        private const string SavePointPlaceholderName = "SavePoint";        
+        private const string NpcSpawnPointName = "NPCSpawn";
         private const string BungalowPropertyCode = "bungalow"; // Property code for the bungalow
         // --- Names for Save Point Stealing ---
         private const string TemplateSavePointGOName = "Intercom Save Point";
@@ -43,7 +38,7 @@ namespace ChloesManorMod
         private const string LodGOName = "Intercom_LOD0";
         private const string ExtraIdlePointsContainerName = "Extra Employee Idle Points"; // Name of your container
         private const string PropertyIdlePointsGOName = "EmployeeIdlePoints"; // Name of the GO under Property
-        private const string RealtyListingObjectName = "PropertyListing Docks Manor"; // Name of your listing object in the prefab
+        private const string ListingPosterName = "PropertyListing Hilltop Manor"; // Name of your listing object in the prefab
         private const string WhiteboardPath = "/Map/Container/RE Office/Interior/Whiteboard"; // Path to the whiteboard
 
         /// <summary>
@@ -477,10 +472,10 @@ namespace ChloesManorMod
         private static void ConfigureRealtyListing(GameObject prefabRoot)
         {
             MelonLogger.Msg("Attempting to configure realty listing...");
-            Transform sourceListing = FindDeepChild(prefabRoot, RealtyListingObjectName);
+            Transform sourceListing = FindDeepChild(prefabRoot.transform, ListingPosterName);
             if (sourceListing == null)
             {
-                MelonLogger.Warning($"Could not find realty listing object '{RealtyListingObjectName}' in prefab.");
+                MelonLogger.Warning($"Could not find realty listing object '{ListingPosterName}' in prefab.");
                 return;
             }
 
@@ -501,8 +496,9 @@ namespace ChloesManorMod
             }
             catch (System.Exception ex) // Qualified Exception
             {
+
                 MelonLogger.Error($"Failed to reparent listing object: {ex.Message}");
-                MelonLogger.LogException(ex); // Use MelonLoader's exception logging
+                MelonLogger.Error(ex); // Use MelonLoader's exception logging
             }
         }
 

@@ -271,22 +271,26 @@ namespace ChloesManorMod
                     }
                     catch (System.Exception e) { LoggerInstance.Error($"Exception during SetParent: {e}"); return; } // Keep error
 
-                    // Call Configuration Helper
-                    // LoggerInstance.Msg("Calling ManorSetupHelper configuration..."); // Removed verbose
-                    ManorSetupHelper.ConfigureManorSetup(spawnedInstanceRoot, manorProperty); // Keep errors from helper
-                    // LoggerInstance.Msg("ManorSetupHelper configuration called."); // Removed verbose
-
-                    // ***** ADD SHADER FIX CALL HERE *****
+                    // ***** MOVED SHADER FIX CALL HERE *****
                     try
                     {
-                         MelonLogger.Msg("Attempting recursive shader fix on spawned instance...");
-                         URPShaderFix.FixShadersRecursive(spawnedInstanceRoot, verboseLogging: false); // Set verboseLogging to true if needed for debug
+                         MelonLogger.Msg("Attempting recursive shader fix BEFORE helper configuration...");
+                         // Ensure spawnedInstanceRoot is passed correctly if the method expects GameObject
+                         URPShaderFix.FixShadersRecursive(spawnedInstanceRoot); // Pass GameObject directly
+                         MelonLogger.Msg("Shader fix applied recursively to spawned instance.");
                     }
                     catch(System.Exception e)
                     {
                          MelonLogger.Error($"Exception during URPShaderFix execution: {e}");
+                         // Decide if we should return or continue if shader fix fails
+                         // return; 
                     }
                     // ***** END SHADER FIX CALL *****
+
+                    // Call Configuration Helper AFTER shader fix
+                    // LoggerInstance.Msg("Calling ManorSetupHelper configuration..."); // Removed verbose
+                    ManorSetupHelper.ConfigureManorSetup(spawnedInstanceRoot, manorProperty); // Keep errors from helper
+                    // LoggerInstance.Msg("ManorSetupHelper configuration called."); // Removed verbose
                 }
             }
             else { LoggerInstance.Error("Spawned instance root is null after spawn attempts. Cannot configure."); } // Keep error
@@ -346,45 +350,65 @@ namespace ChloesManorMod
         // Keep F-Key Teleport for debug builds / personal use
         public override void OnUpdate()
         {
+            base.OnUpdate(); // Ensure base.OnUpdate is called if necessary
+
+            // --- F7 Teleport Debug ---
             if (Input.GetKeyDown(KeyCode.F7))
             {
-                 // LoggerInstance.Msg("F7 pressed. Teleporting..."); // Remove verbose
-                 TeleportToGasMartWestTruck(); // Keep errors from this
+                MelonLogger.Msg("F7 pressed - Attempting to teleport to Manor Listing Poster...");
+
+                // Define the expected path *after* reparenting
+                string listingPath = "/Map/Container/RE Office/Interior/Whiteboard/PropertyListing Docks Manor";
+                GameObject listingObject = GameObject.Find(listingPath);
+
+                if (listingObject != null)
+                {
+                    MelonLogger.Msg($"Found listing object at '{listingPath}'. Attempting to find player...");
+
+                    // --- Find Player Transform (Prioritize Player Component) ---
+                    Transform playerTransformToMove = null;
+                    Player playerInstance = GameObject.FindObjectOfType<Player>(); // Using Il2CppScheduleOne.PlayerScripts.Player
+
+                    if (playerInstance != null)
+                    {
+                        playerTransformToMove = playerInstance.transform;
+                        MelonLogger.Msg($"Using Player component's transform ('{playerInstance.gameObject.name}') for teleport.");
+                    }
+                    // --- End Find Player Transform ---
+
+                    if (playerTransformToMove != null)
+                    {
+                        Vector3 targetPosition = listingObject.transform.position;
+                        MelonLogger.Msg($"Teleporting player object '{playerTransformToMove.name}' from {playerTransformToMove.position} to listing position {targetPosition}");
+
+                        // --- Attempt Teleport --- 
+                        // Directly setting position on the Player's root transform is more likely to work
+                        // than setting it on the camera if it's a child.
+                        playerTransformToMove.position = targetPosition;
+                        MelonLogger.Msg($"Player position set. Verify in-game movement.");
+                        
+                        // If this STILL doesn't work, the CharacterController might need temporary disabling or specific API calls.
+                        // Example (Conceptual - Needs CharacterController check):
+                        // CharacterController controller = playerTransformToMove.GetComponent<CharacterController>();
+                        // if (controller != null) {
+                        //     MelonLogger.Msg("Found CharacterController, attempting disable/enable method...");
+                        //     controller.enabled = false;
+                        //     playerTransformToMove.position = targetPosition;
+                        //     controller.enabled = true; 
+                        // }
+                    }
+                    else
+                    {
+                        MelonLogger.Warning("Could not find Player/Camera transform to teleport after all checks.");
+                    }
+                }
+                else
+                {
+                    MelonLogger.Warning($"Could not find listing object at path '{listingPath}'. Was it reparented correctly? Is the name exact?");
+                }
             }
-        }
-
-        private void TeleportToGasMartWestTruck()
-        {
-            LandVehicle targetVehicle = null;
-            string targetVehicleName = "Dan's Hardware"; // Updated based on last known target
-
-            try
-            {
-                 Il2CppArrayBase<LandVehicle> allVehicles = GameObject.FindObjectsOfType<LandVehicle>();
-                 if (allVehicles == null || allVehicles.Count == 0) { /* LoggerInstance.Warning("No LandVehicles found."); */ return; } // Silent fail
-
-                 // LoggerInstance.Msg($"Found {allVehicles.Count} vehicles. Searching for '{targetVehicleName}'..."); // Remove verbose
-                 foreach (LandVehicle vehicle in allVehicles)
-                 {
-                     if (vehicle != null && vehicle.gameObject != null && vehicle.gameObject.name == targetVehicleName)
-                     {
-                         targetVehicle = vehicle;
-                         break;
-                     }
-                 }
-
-                 if (targetVehicle == null) { LoggerInstance.Warning($"Could not find vehicle named '{targetVehicleName}'."); return; } // Keep warning
-
-                 Player playerInstance = GameObject.FindObjectOfType<Player>();
-                 if (playerInstance == null || playerInstance.transform == null) { /* LoggerInstance.Warning("Could not find Player."); */ return; } // Silent fail
-
-                 Vector3 teleportPos = targetVehicle.transform.position + Vector3.up * 2.0f;
-                 // LoggerInstance.Msg($"Teleporting player to: {teleportPos}"); // Remove verbose
-                 playerInstance.transform.position = teleportPos;
-                 LoggerInstance.Msg("Teleported player via F7."); // Keep confirmation
-            }
-            catch (System.Exception e) { LoggerInstance.Error($"Exception during F7 teleport: {e}"); } // Keep error
-        }
+            // --- End F7 Teleport Debug ---
+        } // End OnUpdate
 
         // Keep dialogue modification methods/logs if that feature is still intended
         //ModifyEstateAgentChoicesDirectly();
