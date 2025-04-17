@@ -7,6 +7,14 @@
       "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:componentrestorer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\estateagentpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:estateagentpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\chloesmanormod.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:chloesmanormod.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\mainmod.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:mainmod.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -21,14 +29,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\manorsetup_chloe.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:manorsetup_chloe.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\estateagentpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:estateagentpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\chloesmanormod.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:chloesmanormod.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
     {
       "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\chloemanorsetup||{25834150-CD7E-11D0-92DF-00A0C9138C45}",
@@ -85,14 +85,14 @@
               "RelativeDocumentMoniker": "ComponentRestorer.cs",
               "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ComponentRestorer.cs",
               "RelativeToolTip": "ComponentRestorer.cs",
-              "ViewState": "AgIAAO8AAAAAAAAAAAAowAABAAAVAAAAAAAAAA==",
+              "ViewState": "AgIAAKgAAAAAAAAAAAAowMYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-04-17T02:27:09.412Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "MainMod.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\MainMod.cs",
               "RelativeDocumentMoniker": "MainMod.cs",
@@ -104,7 +104,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
               "Title": "URPShaderFix.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\URPShaderFix.cs",
               "RelativeDocumentMoniker": "URPShaderFix.cs",
@@ -139,7 +139,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 6,
               "Title": "ManorSetup_Chloe.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ManorSetup_Chloe.cs",
               "RelativeDocumentMoniker": "ManorSetup_Chloe.cs",
@@ -187,15 +187,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 1,
               "Title": "EstateAgentPatch.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\EstateAgentPatch.cs",
               "RelativeDocumentMoniker": "EstateAgentPatch.cs",
               "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\EstateAgentPatch.cs",
               "RelativeToolTip": "EstateAgentPatch.cs",
-              "ViewState": "AgIAACMAAAAAAAAAAIAwwFMAAABtAAAAAAAAAA==",
+              "ViewState": "AgIAABEAAAAAAAAAAAAQwCAAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-14T16:59:10.685Z"
+              "WhenOpened": "2025-04-14T16:59:10.685Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -206,7 +207,8 @@
               "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ChloesManorMod.csproj",
               "RelativeToolTip": "ChloesManorMod.csproj",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-04-14T13:43:19.386Z"
+              "WhenOpened": "2025-04-14T13:43:19.386Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -222,7 +224,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "ManorSetupHelper.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ManorSetupHelper.cs",
               "RelativeDocumentMoniker": "ManorSetupHelper.cs",
@@ -234,15 +236,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 2,
               "Title": "ChloesManorMod.csproj",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ChloesManorMod.csproj",
               "RelativeDocumentMoniker": "ChloesManorMod.csproj",
               "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ChloesManorMod.csproj",
               "RelativeToolTip": "ChloesManorMod.csproj",
-              "ViewState": "AgIAAAEAAAAAAAAAAAAAACEAAACPAAAAAAAAAA==",
+              "ViewState": "AgIAAEEAAAAAAAAAAAAhwFkAAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-04-16T10:09:45.729Z"
+              "WhenOpened": "2025-04-16T10:09:45.729Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",

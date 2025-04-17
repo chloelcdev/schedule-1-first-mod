@@ -15,12 +15,19 @@ public static class URPShaderFix
         public string ProblematicShaderName; // Name of the shader to replace
         public string TargetShaderName;      // Name of the shader to find and apply
         public Dictionary<string, string> TexturePropertyMappings; // Key=Original Property Name, Value=Target Property Name
+        public Dictionary<string, string> ColorPropertyMappings;   // Key=Original Property Name, Value=Target Property Name
+        public Dictionary<string, string> FloatPropertyMappings;   // Key=Original Property Name, Value=Target Property Name
 
-        public ShaderFixConfig(string problematic, string target, Dictionary<string, string> mappings)
+        public ShaderFixConfig(string problematic, string target, 
+                               Dictionary<string, string> textureMappings,
+                               Dictionary<string, string> colorMappings = null, // Optional
+                               Dictionary<string, string> floatMappings = null) // Optional
         {
             ProblematicShaderName = problematic;
             TargetShaderName = target;
-            TexturePropertyMappings = mappings ?? new Dictionary<string, string>(); // Ensure dictionary exists
+            TexturePropertyMappings = textureMappings ?? new Dictionary<string, string>(); // Ensure dictionary exists
+            ColorPropertyMappings = colorMappings ?? new Dictionary<string, string>();     // Ensure dictionary exists
+            FloatPropertyMappings = floatMappings ?? new Dictionary<string, string>();       // Ensure dictionary exists
         }
     }
 
@@ -31,7 +38,7 @@ public static class URPShaderFix
         new ShaderFixConfig(
             problematic: "Universal Render Pipeline/Lit",
             target: "Universal Render Pipeline/Lit", // Find the game's version
-            mappings: new Dictionary<string, string> {
+            textureMappings: new Dictionary<string, string> {
                 // Map original property names to target property names
                 // Assuming they are the same unless proven otherwise
                 { "_BaseMap", "_BaseMap" },         // Standard color/albedo texture
@@ -47,23 +54,38 @@ public static class URPShaderFix
         new ShaderFixConfig(
             problematic: "Universal Render Pipeline/Simple Lit",
             target: "Universal Render Pipeline/Simple Lit", // Find the game's version
-            mappings: new Dictionary<string, string> {
+            textureMappings: new Dictionary<string, string> {
                 { "_BaseMap", "_BaseMap" },
                 { "_MainTex", "_MainTex" }, 
                 { "_EmissionMap", "_EmissionMap" },
                 { "_BumpMap", "_BumpMap" },
-                // Add any other texture properties used by this shader graph
             }
         ),
         // Fix for the Worldspace UV shader
         new ShaderFixConfig(
             problematic: "Shader Graphs/WorldspaceUV_New",
             target: "Shader Graphs/WorldspaceUV_New", // Find the game's version
-            mappings: new Dictionary<string, string> {
+            textureMappings: new Dictionary<string, string> {
                 { "_DiffuseTexture", "_DiffuseTexture" },
                 { "_Metallic_Map", "_Metallic_Map" }, 
                 { "_NormalTexture", "_NormalTexture" },
-                // Add any other texture properties used by this shader graph
+            }
+        ),
+        // --- NEW FIX for Tyler Decal --- 
+        new ShaderFixConfig(
+            problematic: "Shader Graphs/Tyler Decal",
+            target: "Shader Graphs/Tyler Decal", // Targetting the same shader, just ensuring it's the game's instance
+            textureMappings: new Dictionary<string, string> {
+                { "_BaseMap", "_BaseMap" },
+                { "_Base_Map", "_Base_Map" }, // Include both variants if they exist
+                { "_MainTex", "_MainTex" },
+                { "_Normal_Map", "_Normal_Map" } 
+            },
+            colorMappings: new Dictionary<string, string> {
+                { "_BaseColor", "_BaseColor" }
+            },
+            floatMappings: new Dictionary<string, string> {
+                { "_Normal_Blend", "_Normal_Blend" }
             }
         )
         // Add configs for other problematic shaders here if discovered
@@ -78,226 +100,284 @@ public static class URPShaderFix
             return;
         }
 
-        // Cache found target shaders to avoid repeated Shader.Find
         Dictionary<string, Shader> targetShaderCache = new Dictionary<string, Shader>();
-        int totalFixedCount = 0;
+        int totalRenderersFixed = 0;
+        int totalDecalsFixed = 0;
 
         if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Starting shader check for '{rootObject.name}'...");
 
-        // 3. Get all renderers in children
-        Renderer[] renderers = rootObject.GetComponentsInChildren<Renderer>(true); // Include inactive
-
+        // --- 1. Process Renderers ---
+        Renderer[] renderers = rootObject.GetComponentsInChildren<Renderer>(true);
         if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Found {renderers.Length} renderers under '{rootObject.name}'.");
 
         foreach (Renderer rend in renderers)
         {
             if (rend == null) continue;
+            
+            // Don't process DecalProjector materials here, we'll do it separately
+            if (rend.GetType().FullName == "UnityEngine.Rendering.Universal.DecalProjector") {
+                if (verboseLogging) MelonLogger.Msg($"   - Skipping Renderer {rend.gameObject.name} as it is a DecalProjector (will be handled separately).");
+                continue;
+            }
 
             Material[] materials = rend.materials; // Get COPY of material array
             if (materials == null || materials.Length == 0) continue;
 
-            bool changedMaterialInArray = false; // Track if we need to reassign the array
-
-            // 4. Iterate through the materials array copy
+            bool changedMaterialInArray = false;
             for (int i = 0; i < materials.Length; i++)
             {
-                Material mat = materials[i];
-                if (mat == null) continue;
-
-                Shader currentShader = mat.shader;
-                ShaderFixConfig matchingConfig = null;
-
-                // Find if the current shader matches a problematic configuration
-                if (currentShader != null)
+                // Pass the material reference (materials[i]) to the helper
+                // The helper returns true if the material was modified
+                if (ProcessMaterialFix(ref materials[i], targetShaderCache, rend.gameObject, i, verboseLogging))
                 {
-                    foreach (var config in FixConfigs)
-                    {
-                        if (currentShader.name == config.ProblematicShaderName)
-                        {
-                            matchingConfig = config;
-                            break;
-                        }
-                    }
+                    changedMaterialInArray = true;
+                    totalRenderersFixed++;
                 }
-                // Handle null shader case - Default to URP/Lit fix? (Optional, adjust if needed)
-                else
-                {
-                    // Example: Treat null shader as needing the URP/Lit fix
-                    matchingConfig = FixConfigs.Find(cfg => cfg.ProblematicShaderName == "Universal Render Pipeline/Lit");
-                     if (verboseLogging && matchingConfig != null) MelonLogger.Msg($"   - Material '{mat.name}' on '{rend.gameObject.name}' has NULL shader. Will attempt fix using '{matchingConfig.TargetShaderName}'.", rend);
-                     else if (verboseLogging) MelonLogger.Msg($"   - Material '{mat.name}' on '{rend.gameObject.name}' has NULL shader. No default fix configured.", rend);
-                }
+            }
 
-                // Proceed if we found a configuration match
-                if (matchingConfig != null)
-                {
-                    // Find (or get from cache) the target shader instance
-                    Shader targetShaderInstance = null;
-                    if (!targetShaderCache.TryGetValue(matchingConfig.TargetShaderName, out targetShaderInstance))
-                    {
-                        targetShaderInstance = Shader.Find(matchingConfig.TargetShaderName);
-                        if (targetShaderInstance != null) { targetShaderCache[matchingConfig.TargetShaderName] = targetShaderInstance; }
-                        else
-                        {
-                             MelonLogger.Error($"[URPShaderFix] Could not find target shader '{matchingConfig.TargetShaderName}' for material '{mat.name}' on '{rend.gameObject.name}'. Skipping fix.", rend);
-                             continue; // Skip this material
-                        }
-                    }
-
-                    // Check if the shader instance actually needs changing
-                    if (currentShader != targetShaderInstance)
-                    {
-                         if (verboseLogging) MelonLogger.Msg($"   - Fixing Shader for Material '{mat.name}' on '{rend.gameObject.name}' (Index {i}). From: '{(currentShader?.name ?? "NULL")}' To: '{targetShaderInstance.name}'");
-
-                        // 1. Store old texture values based on the config's ORIGINAL names
-                        Dictionary<string, Texture> originalTextures = new Dictionary<string, Texture>();
-                        foreach (var kvp in matchingConfig.TexturePropertyMappings)
-                        {
-                            string originalPropName = kvp.Key;
-                            if (mat.HasProperty(originalPropName))
-                            {
-                                Texture tex = mat.GetTexture(originalPropName);
-                                originalTextures[originalPropName] = tex;
-                                // if (verboseLogging) MelonLogger.Msg($"     - Stored Texture from '{originalPropName}': {tex?.name ?? "NULL"}");
-                            }
-                        }
-
-                        // 2. Change the shader
-                        try
-                        {
-                            mat.shader = targetShaderInstance; // Assign new shader TO THE MATERIAL IN OUR COPIED ARRAY
-
-                            // 3. Apply stored textures using the config's TARGET names
-                            foreach (var kvp in matchingConfig.TexturePropertyMappings)
-                            {
-                                string originalPropName = kvp.Key;
-                                string targetPropName = kvp.Value;
-
-                                if (originalTextures.TryGetValue(originalPropName, out Texture storedTex))
-                                {
-                                    if (mat.HasProperty(targetPropName)) // Check if NEW shader has the target property
-                                    {
-                                        mat.SetTexture(targetPropName, storedTex);
-                                         // if (verboseLogging) MelonLogger.Msg($"     - Applied Texture to '{targetPropName}' (from '{originalPropName}'): {storedTex?.name ?? "NULL"}");
-                                    }
-                                    // else if (verboseLogging) MelonLogger.Msg($"     - Target Property '{targetPropName}' not found on new shader.");
-                                }
-                            }
-
-                            changedMaterialInArray = true; // Mark that we need to reassign the array
-                            totalFixedCount++;
-                            if (verboseLogging) MelonLogger.Msg($"     -> SUCCESS.");
-
-
-                        } catch (System.Exception e) { MelonLogger.Error($"     -> FAILED during shader/texture update: {e.Message}", rend); } // QUALIFIED
-                    }
-                     //else if (verboseLogging) MelonLogger.Msg($"   - Shader already correct for Material '{mat.name}' on '{rend.gameObject.name}'."); // Reduced log noise
-
-                } // End if matchingConfig != null
-
-            } // End material loop
-
-            // IMPORTANT: Assign the potentially modified materials array back to the renderer
             if (changedMaterialInArray)
             {
-                 // if (verboseLogging) MelonLogger.Msg($"   -> Reassigning materials array for '{rend.gameObject.name}'."); // Reduced log noise
-                 rend.materials = materials;
+                rend.materials = materials; // Assign the potentially modified array back
             }
-
-        } // End renderer loop
-
-        if (totalFixedCount > 0) { MelonLogger.Msg($"[URPShaderFix] Finished. Applied shader fixes to {totalFixedCount} material instances under '{rootObject.name}'."); }
-        else if (verboseLogging) { MelonLogger.Msg($"[URPShaderFix] Finished check under '{rootObject.name}'. No shader changes required based on config."); }
-    }
-
-    // --- NEW METHOD FOR FIXING DECAL PROJECTORS ---
-    public static void FixDecalProjectorsRecursive(Transform root, bool verboseLogging = false)
-    {
-        MelonLogger.Msg("[URPShaderFix] Starting Decal Projector fix...");
-        int fixedCount = 0;
-        int foundCount = 0;
-
-        // --- Find the Target DecalProjector Type using Reflection --- 
-        string targetTypeName = "UnityEngine.Rendering.Universal.DecalProjector"; // Adjust if game uses different assembly/namespace
-        System.Type targetSysType = FindTypeInLoadedAssemblies(targetTypeName);
-        if (targetSysType == null)
-        {
-            MelonLogger.Error($"[URPShaderFix] Could not find the target System.Type for '{targetTypeName}' in loaded assemblies! Aborting decal fix.");
-            return;
         }
-        MelonLogger.Msg($"[URPShaderFix] Found target System.Type: {targetSysType.FullName}. Converting to Il2CppSystem.Type...");
 
-        // --- Convert to Il2CppSystem.Type for AddComponent --- 
-        Il2CppSystem.Type targetDecalIl2CppType = Il2CppType.From(targetSysType);
-        if (targetDecalIl2CppType == null)
+        // --- 2. Process Decal Projectors ---
+        string decalTypeName = "UnityEngine.Rendering.Universal.DecalProjector";
+        System.Type decalSysType = FindTypeInLoadedAssemblies(decalTypeName); // System.Type for checks
+
+        if (decalSysType != null)
         {
-            MelonLogger.Error($"[URPShaderFix] Failed to convert System.Type '{targetSysType.FullName}' to Il2CppSystem.Type! Aborting decal fix.");
-            return;
-        }
-         MelonLogger.Msg($"[URPShaderFix] Successfully converted to Il2CppSystem.Type: {targetDecalIl2CppType.FullName}");
-        // --- End Type Conversion ---
-
-        // Iterate through all components in the hierarchy
-        Component[] allComponents = root.GetComponentsInChildren<Component>(true);
-        string sourceTypeName = "UnityEngine.Renderer.DecalProjector"; // The type name from YOUR bundle
-
-        if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Scanning {allComponents.Length} components under '{root.name}'...");
-
-        foreach (Component component in allComponents)
-        {
-            if (component == null) continue;
-
-            // --- DEBUG LOGGING --- 
-            if (verboseLogging) 
+            Il2CppSystem.Type decalIl2CppType = Il2CppType.From(decalSysType); // Il2Cpp Type for GetComponent
+            if (decalIl2CppType == null)
             {
-                 // Log type name for all components if verbose, or just likely candidates
-                 // Example: Only log if the name might be related to Decal
-                 if (component.GetType().Name.ToLower().Contains("decal"))
-                 {
-                     MelonLogger.Msg($"    - Found component: '{component.gameObject.name}' -> Type: {component.GetType().FullName}");
-                 }
+                 MelonLogger.Error($"[URPShaderFix] Failed to convert DecalProjector System.Type '{decalSysType.FullName}' to Il2CppSystem.Type! Skipping decal fix.");
             }
-            // --- END DEBUG LOGGING ---
-
-            // Check if the component's type name matches the one from the bundle
-            if (component.GetType().FullName == sourceTypeName)
+            else 
             {
-                foundCount++;
-                GameObject go = component.gameObject;
-                MelonLogger.Msg($"[URPShaderFix] Found potential source DecalProjector on '{go.name}'. Attempting replacement...");
+                Component[] decalComponents = rootObject.GetComponentsInChildren(decalIl2CppType, true);
+                if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Found {decalComponents.Length} DecalProjectors under '{rootObject.name}'.");
 
-                try
-                {
-                    // Add the *target* game's DecalProjector component using the Il2CppSystem.Type
-                    Component newDecalComponent = go.AddComponent(targetDecalIl2CppType);
-                    if (newDecalComponent == null)
+                // Remove reflection for material property
+                // PropertyInfo materialProp = decalSysType.GetProperty("material", BindingFlags.Instance | BindingFlags.Public); 
+                // if (materialProp == null || !materialProp.CanRead || !materialProp.CanWrite)
+                // {
+                //    MelonLogger.Error("[URPShaderFix] Could not find readable/writable 'material' property on DecalProjector type. Cannot fix decal materials.");
+                // }
+                // else
+                // {
+                    foreach (Component decalComponent in decalComponents) // Renamed variable
                     {
-                        // This should ideally not fail now if the Il2CppType was valid
-                        MelonLogger.Error($"[URPShaderFix] AddComponent failed using converted Il2CppType '{targetDecalIl2CppType.FullName}' on '{go.name}'. Skipping.");
-                        continue;
+                        if (decalComponent == null) continue;
+
+                        // --- Cast to specific type using 'as' --- 
+                        UnityEngine.Rendering.Universal.DecalProjector decalProjectorInstance = 
+                            decalComponent as UnityEngine.Rendering.Universal.DecalProjector; // USE 'as' operator
+
+                        if (decalProjectorInstance == null)
+                        {
+                             // This check is still good practice, even if unlikely with 'as'
+                             MelonLogger.Warning($"[URPShaderFix] Failed to cast Component on '{decalComponent.gameObject.name}' to DecalProjector using 'as'. Skipping material fix for this component.");
+                             continue;
+                        }
+                        // --- End Cast ---
+
+                        Material currentDecalMat = null;
+                        try
+                        {
+                            // --- Access material directly --- 
+                            currentDecalMat = decalProjectorInstance.material; 
+                        }
+                        catch (System.Exception ex)
+                        {
+                            // Catch potential errors even with direct access (though less likely than reflection issues)
+                            MelonLogger.Warning($"[URPShaderFix] Error getting material directly from DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}");
+                            continue;
+                        }
+
+                        Material originalMatInstance = currentDecalMat; 
+
+                        // Process the material (passing the reference)
+                        if (ProcessMaterialFix(ref currentDecalMat, targetShaderCache, decalProjectorInstance.gameObject, -1, verboseLogging))
+                        {
+                            totalDecalsFixed++;
+                            if (currentDecalMat != originalMatInstance) 
+                            {
+                                 if (verboseLogging) MelonLogger.Msg($"   - Reassigning modified material instance to DecalProjector on '{decalProjectorInstance.gameObject.name}'.");
+                            } else {
+                                 if (verboseLogging) MelonLogger.Msg($"   - Reassigning (potentially modified in-place) material to DecalProjector on '{decalProjectorInstance.gameObject.name}'.");
+                            }
+                            
+                            try
+                            {
+                                // --- Set material directly --- 
+                                decalProjectorInstance.material = currentDecalMat;
+                            }
+                            catch (System.Exception ex)
+                            {
+                                MelonLogger.Error($"[URPShaderFix] Error setting material directly onto DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}");
+                            }
+                        }
                     }
+                // }
+            }
+        }
+        else if (verboseLogging)
+        {
+            MelonLogger.Warning($"[URPShaderFix] Could not find DecalProjector type '{decalTypeName}'. Skipping decal material check.");
+        }
 
-                    MelonLogger.Msg($"[URPShaderFix] Successfully added component of type '{newDecalComponent.GetType().FullName}' to '{go.name}'. Copying properties...");
+        // --- 3. Final Report ---
+        int totalFixed = totalRenderersFixed + totalDecalsFixed;
+        if (totalFixed > 0)
+        {
+            MelonLogger.Msg($"[URPShaderFix] Finished. Applied shader fixes to {totalRenderersFixed} renderer material(s) and {totalDecalsFixed} DecalProjector material(s) under '{rootObject.name}'.");
+        }
+        else if (verboseLogging)
+        {
+            MelonLogger.Msg($"[URPShaderFix] Finished check under '{rootObject.name}'. No shader changes required based on config.");
+        }
+    }
 
-                    // Copy properties using Reflection
-                    CopyDecalProperties(component, newDecalComponent, verboseLogging);
+    // --- NEW HELPER FUNCTION to process a single material ---
+    // Returns true if the material was modified, false otherwise.
+    // Takes material by ref so it can be potentially replaced (though Unity often instances materials on edit anyway).
+    private static bool ProcessMaterialFix(ref Material mat, Dictionary<string, Shader> targetShaderCache, GameObject ownerGO, int materialIndex, bool verboseLogging)
+    {
+        if (mat == null) return false;
 
-                    // Destroy the old, incompatible component
-                    UnityEngine.Object.DestroyImmediate(component);
-                    fixedCount++;
-                    MelonLogger.Msg($"[URPShaderFix] Successfully replaced DecalProjector on '{go.name}'.");
-                }
-                catch (System.Exception ex)
+        string ownerName = ownerGO?.name ?? "UnknownOwner";
+        string materialIdentifier = $"Material '{mat.name}' on '{ownerName}'" + (materialIndex >= 0 ? $" (Index {materialIndex})" : " (Decal)");
+
+        Shader currentShader = mat.shader;
+        ShaderFixConfig matchingConfig = null;
+
+        // Find matching config based on current shader name
+        if (currentShader != null)
+        {
+            foreach (var config in FixConfigs)
+            {
+                if (currentShader.name == config.ProblematicShaderName)
                 {
-                    MelonLogger.Error($"[URPShaderFix] Error replacing DecalProjector on '{go.name}': {ex.Message}");
+                    matchingConfig = config;
+                    break;
                 }
             }
         }
+        else // Handle null shader case
+        {
+            matchingConfig = FixConfigs.Find(cfg => cfg.ProblematicShaderName == "Universal Render Pipeline/Lit"); // Example default
+            if (verboseLogging && matchingConfig != null) MelonLogger.Msg($"   - {materialIdentifier} has NULL shader. Will attempt fix using '{matchingConfig.TargetShaderName}'.", ownerGO);
+            else if (verboseLogging) MelonLogger.Msg($"   - {materialIdentifier} has NULL shader. No default fix configured.", ownerGO);
+        }
 
-        MelonLogger.Msg($"[URPShaderFix] Decal Projector fix finished. Found: {foundCount}, Replaced: {fixedCount}.");
+        if (matchingConfig == null) return false; // No config found for this shader
+
+        // Find target shader (use cache)
+        Shader targetShaderInstance = null;
+        if (!targetShaderCache.TryGetValue(matchingConfig.TargetShaderName, out targetShaderInstance))
+        {
+            targetShaderInstance = Shader.Find(matchingConfig.TargetShaderName);
+            if (targetShaderInstance != null) { targetShaderCache[matchingConfig.TargetShaderName] = targetShaderInstance; }
+            else
+            {
+                MelonLogger.Error($"[URPShaderFix] Could not find target shader '{matchingConfig.TargetShaderName}' for {materialIdentifier}. Skipping fix.", ownerGO);
+                return false;
+            }
+        }
+
+        // Check if shader needs changing
+        if (currentShader == targetShaderInstance)
+        {
+             // if (verboseLogging) MelonLogger.Msg($"   - Shader already correct for {materialIdentifier}."); // Reduced log noise
+             return false; // No change needed
+        }
+        
+        // --- Shader needs fixing ---
+        if (verboseLogging) MelonLogger.Msg($"   - Fixing Shader for {materialIdentifier}. From: '{(currentShader?.name ?? "NULL")}' To: '{targetShaderInstance.name}'");
+
+        // Store old values before changing shader
+        Dictionary<string, Texture> originalTextures = new Dictionary<string, Texture>();
+        Dictionary<string, Color> originalColors = new Dictionary<string, Color>();
+        Dictionary<string, float> originalFloats = new Dictionary<string, float>();
+
+        // Store Textures
+        foreach (var kvp in matchingConfig.TexturePropertyMappings)
+        {
+            string originalPropName = kvp.Key;
+            if (mat.HasProperty(originalPropName))
+            {
+                try { originalTextures[originalPropName] = mat.GetTexture(originalPropName); }
+                catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed getting Texture from '{originalPropName}': {e.Message}"); }
+            }
+        }
+        // Store Colors
+        foreach (var kvp in matchingConfig.ColorPropertyMappings)
+        {
+            string originalPropName = kvp.Key;
+            if (mat.HasProperty(originalPropName))
+            {
+                try { originalColors[originalPropName] = mat.GetColor(originalPropName); }
+                catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed getting Color from '{originalPropName}': {e.Message}"); }
+            }
+        }
+        // Store Floats
+        foreach (var kvp in matchingConfig.FloatPropertyMappings)
+        {
+            string originalPropName = kvp.Key;
+            if (mat.HasProperty(originalPropName))
+            {
+                try { originalFloats[originalPropName] = mat.GetFloat(originalPropName); }
+                catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed getting Float from '{originalPropName}': {e.Message}"); }
+            }
+        }
+
+        // Change the shader
+        try
+        {
+            // Note: Setting shader often creates a new material instance.
+            // The 'ref mat' might now point to the new instance if Unity does this behind the scenes.
+            mat.shader = targetShaderInstance; 
+
+            // Apply stored values using TARGET names
+            // Apply Textures
+            foreach (var kvp in matchingConfig.TexturePropertyMappings)
+            {
+                if (originalTextures.TryGetValue(kvp.Key, out Texture storedTex) && mat.HasProperty(kvp.Value))
+                {
+                    try { mat.SetTexture(kvp.Value, storedTex); }
+                    catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed setting Texture to '{kvp.Value}': {e.Message}"); }
+                }
+            }
+            // Apply Colors
+            foreach (var kvp in matchingConfig.ColorPropertyMappings)
+            {
+                if (originalColors.TryGetValue(kvp.Key, out Color storedColor) && mat.HasProperty(kvp.Value))
+                {
+                    try { mat.SetColor(kvp.Value, storedColor); }
+                    catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed setting Color to '{kvp.Value}': {e.Message}"); }
+                }
+            }
+            // Apply Floats
+            foreach (var kvp in matchingConfig.FloatPropertyMappings)
+            {
+                if (originalFloats.TryGetValue(kvp.Key, out float storedFloat) && mat.HasProperty(kvp.Value))
+                {
+                    try { mat.SetFloat(kvp.Value, storedFloat); }
+                    catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed setting Float to '{kvp.Value}': {e.Message}"); }
+                }
+            }
+
+            if (verboseLogging) MelonLogger.Msg($"     -> SUCCESS applying shader and properties to {materialIdentifier}.");
+            return true; // Material was modified
+        }
+        catch (System.Exception e)
+        {
+            MelonLogger.Error($"     -> FAILED during shader/property update for {materialIdentifier}: {e.Message}", ownerGO);
+            return false; // Modification failed
+        }
     }
 
-    // Helper to find a type by name across all loaded assemblies (RESTORED)
+    // Helper to find a type by name across all loaded assemblies
     private static System.Type FindTypeInLoadedAssemblies(string typeFullName)
     {
         System.Type foundType = null;
@@ -318,7 +398,7 @@ public static class URPShaderFix
         return null; // Not found
     }
 
-    // Helper to copy properties via Reflection
+    // Helper to copy properties via Reflection (keeping for now, might be useful elsewhere)
     private static void CopyDecalProperties(Component source, Component target, bool verbose)
     {
         // List of specific Decal Projector properties to copy based on user request
