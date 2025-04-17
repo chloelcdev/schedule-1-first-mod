@@ -7,14 +7,13 @@ using UnityEngine;
 using UnityEngine.Animations;
 using Newtonsoft.Json;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.UI; // Example if smuggling Sprites via Image
 
 // --- NEW: Configuration Structures ---
 public class PropertyMap
 {
-    public string JsonPropertyName { get; set; }
-    public string RuntimePropertyName { get; set; }
-    public bool IsMaterial { get; set; } // Special handling for materials?
-    public bool IsEnum { get; set; } // Special handling for enums?
+    public string JsonPropertyName { get; set; } // Name of field in ComponentData
+    public string RuntimePropertyName { get; set; } // Name of property on the actual runtime Component
 }
 
 public class ComponentTypeMapping
@@ -33,8 +32,8 @@ public class ComponentTypeMapping
 public class ComponentData
 {
     public string typeFullName; // e.g., "UnityEngine.Rendering.Universal.DecalProjector"
-    // Store properties as basic types or strings where possible
-    public string materialPath; // Store material by Resources path or bundle path if applicable
+
+    // --- Standard Properties ONLY --- (No materialPath, no SmuggleInfo)
     public float drawDistance;
     public float fadeScale;
     public float startAngleFade;
@@ -46,7 +45,7 @@ public class ComponentData
     public Vector3 pivot;
     public Vector3 size;
     public float fadeFactor;
-    // Add other properties as needed, matching the Editor script output
+    // Add other properties as needed
 }
 
 [Serializable]
@@ -98,15 +97,14 @@ public static class ComponentRestorer
     {
         if (_mappingsInitialized) return;
         if (verboseLogging) MelonLogger.Msg("[ComponentRestorer] Initializing component type mappings...");
-
         _componentMappings.Clear();
 
-        // --- Define Mappings using Helper (looks more like config) ---
-
-        // DecalProjector Mapping
+        // DecalProjector Mapping (Simplified Property Map)
         AddMapping(verboseLogging, "UnityEngine.Rendering.Universal.DecalProjector",
         /* Property Maps: */ new List<PropertyMap>
         {
+            // Map JSON fields -> Runtime Property Names
+            // **NOTE: No entry for "material" here - it will be handled by type dispatch**
             new PropertyMap { JsonPropertyName = "drawDistance", RuntimePropertyName = "drawDistance" },
             new PropertyMap { JsonPropertyName = "fadeScale", RuntimePropertyName = "fadeScale" },
             new PropertyMap { JsonPropertyName = "startAngleFade", RuntimePropertyName = "startAngleFade" },
@@ -117,10 +115,9 @@ public static class ComponentRestorer
             new PropertyMap { JsonPropertyName = "pivot", RuntimePropertyName = "pivot" },
             new PropertyMap { JsonPropertyName = "size", RuntimePropertyName = "size" },
             new PropertyMap { JsonPropertyName = "fadeFactor", RuntimePropertyName = "fadeFactor" },
-            new PropertyMap { JsonPropertyName = "scaleMode", RuntimePropertyName = "scaleMode", IsEnum = true },
-            new PropertyMap { JsonPropertyName = "materialPath", RuntimePropertyName = "material", IsMaterial = true }
+            new PropertyMap { JsonPropertyName = "scaleMode", RuntimePropertyName = "scaleMode" }
         },
-        /* Add Action: */ (go) => go.AddComponent<DecalProjector>() // Use specific generic AddComponent<T>
+        /* Add Action: */ (go) => go.AddComponent<DecalProjector>()
         );
 
         // --- Add mappings for other types here using AddMapping() ---
@@ -290,86 +287,167 @@ public static class ComponentRestorer
         MelonLogger.Msg($"[ComponentRestorer] Finished component restoration using mappings. Added {restoredCount} missing components.");
     }
 
-    // --- NEW Method Implementation ---
+    // --- Updated ApplyPropertiesFromMapping using Type Dispatch ---
     private static void ApplyPropertiesFromMapping(Component target, ComponentData data, ComponentTypeMapping mapping, bool verbose)
     {
         if (verbose) MelonLogger.Msg($"    - Applying properties using mapping for {mapping.JsonTypeName}...");
-        System.Type targetRuntimeType = mapping.RuntimeType; // Type of the component we just added
-        System.Type jsonDataType = typeof(ComponentData); // Type of the source data
+        System.Type targetRuntimeType = mapping.RuntimeType;
+        System.Type jsonDataType = typeof(ComponentData);
 
+        // First, handle SMUGGLED properties by checking the TARGET component's properties
+        PropertyInfo[] allRuntimeProps = targetRuntimeType.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        foreach (PropertyInfo runtimeProp in allRuntimeProps)
+        {
+            if (!runtimeProp.CanWrite) continue;
+
+            // --- Dispatch based on Property Type for Smuggled Assets ---
+            try
+            {
+                if (runtimeProp.PropertyType == typeof(Material))
+                {
+                    Material mat = RetrieveSmuggledMaterial(target, runtimeProp.Name, verbose);
+                    if (mat != null)
+                    {
+                         runtimeProp.SetValue(target, mat);
+                         if (verbose) MelonLogger.Msg($"      - Set Smuggled Material '{runtimeProp.Name}' successfully.");
+                    }
+                    // else: If RetrieveSmuggledMaterial returned null, means placeholder wasn't found or was invalid.
+                    //       Property remains unset (default/null).
+                }
+                else if (runtimeProp.PropertyType == typeof(Sprite)) // Example for Sprites
+                {
+                    Sprite sprite = RetrieveSmuggledSprite(target, runtimeProp.Name, verbose);
+                     if (sprite != null)
+                     {
+                          runtimeProp.SetValue(target, sprite);
+                          if (verbose) MelonLogger.Msg($"      - Set Smuggled Sprite '{runtimeProp.Name}' successfully.");
+                     }
+                }
+                // Add other 'else if' blocks here for other smuggled types (Texture2D, AudioClip, etc.)
+
+            }
+            catch (System.Exception ex)
+            {
+                 MelonLogger.Warning($"[ComponentRestorer] Error setting smuggled property '{runtimeProp.Name}': {ex.Message}");
+            }
+        }
+
+        // Second, handle properties explicitly listed in the mapping (JSON values)
         foreach (PropertyMap propMap in mapping.PropertyMappings)
         {
             try
             {
-                // Find the property on the actual component (target)
                 PropertyInfo runtimeProp = targetRuntimeType.GetProperty(propMap.RuntimePropertyName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (runtimeProp == null || !runtimeProp.CanWrite)
                 {
-                    if (verbose) MelonLogger.Msg($"      - Skip '{propMap.RuntimePropertyName}': Target property not found or not writable on {targetRuntimeType.Name}.");
+                    // Warning logged in previous loop if null, only check CanWrite here if needed
+                    if (runtimeProp != null && !runtimeProp.CanWrite && verbose) MelonLogger.Msg($"      - Skip JSON property '{propMap.RuntimePropertyName}': Target not writable (Might be handled by smuggling).");
                     continue;
                 }
 
-                // Handle Material separately
-                if (propMap.IsMaterial)
-                {
-                    FieldInfo jsonField = jsonDataType.GetField(propMap.JsonPropertyName, BindingFlags.Instance | BindingFlags.Public);
-                    if (jsonField == null) { 
-                         if (verbose) MelonLogger.Warning($"      - Skip Material: Json field '{propMap.JsonPropertyName}' not found in ComponentData.");
-                         continue; 
-                    }
-                    string materialPath = jsonField.GetValue(data) as string;
-                    Material mat = null;
-                    if (!string.IsNullOrEmpty(materialPath))
-                    {
-                        // TODO: Enhance material loading - check bundle? Allow config?
-                        mat = Resources.Load<Material>(materialPath);
-                        if (mat == null && verbose) MelonLogger.Warning($"     - Could not load material via Resources.Load: '{materialPath}' for property '{propMap.RuntimePropertyName}'");
-                    }
-                    runtimeProp.SetValue(target, mat);
-                    if (verbose) MelonLogger.Msg($"      - Set Material '{propMap.RuntimePropertyName}' to '{mat?.name ?? "null"}' (Loaded from: '{materialPath ?? "N/A"}')");
-                    continue; // Handled material, move to next property
-                }
+                // Skip properties handled by smuggling (check again to be safe)
+                if (runtimeProp.PropertyType == typeof(Material) || runtimeProp.PropertyType == typeof(Sprite)) continue;
 
-                // Find the field on the ComponentData object (data)
-                FieldInfo jsonPropField = jsonDataType.GetField(propMap.JsonPropertyName, BindingFlags.Instance | BindingFlags.Public); // Assuming public fields in ComponentData
-                if (jsonPropField == null)
+                // Get the source field from JSON data
+                FieldInfo jsonField = jsonDataType.GetField(propMap.JsonPropertyName, BindingFlags.Instance | BindingFlags.Public);
+                if (jsonField == null)
                 {
-                    if (verbose) MelonLogger.Warning($"      - Skip '{propMap.JsonPropertyName}': Source field not found in ComponentData.");
+                    if (verbose) MelonLogger.Warning($"      - Skip '{propMap.JsonPropertyName}': Source field not found in ComponentData class definition for property '{propMap.RuntimePropertyName}'.");
+                    continue;
+                }
+                object sourceValue = jsonField.GetValue(data);
+                if (sourceValue == null) 
+                {
+                    if (verbose) MelonLogger.Msg($"      - Skip '{propMap.JsonPropertyName}': Source value from JSON is null.");
                     continue;
                 }
 
-                // Get the value from the ComponentData
-                object valueToSet = jsonPropField.GetValue(data);
-
-                // Handle Enum separately
-                if (propMap.IsEnum)
+                // Handle Enums
+                if (runtimeProp.PropertyType.IsEnum)
                 {
                     try
                     {
-                        // Assuming the JSON stores the enum as its underlying int value
-                        object enumValue = System.Enum.ToObject(runtimeProp.PropertyType, valueToSet);
+                        object enumValue = System.Enum.ToObject(runtimeProp.PropertyType, sourceValue);
                         runtimeProp.SetValue(target, enumValue);
-                        if (verbose) MelonLogger.Msg($"      - Set Enum '{propMap.RuntimePropertyName}' to {enumValue} (from JSON value {valueToSet})");
+                        if (verbose) MelonLogger.Msg($"      - Set Enum '{propMap.RuntimePropertyName}' to {enumValue} (from JSON value {sourceValue})");
                     }
-                    catch (System.Exception ex)
-                    {
-                         MelonLogger.Warning($"[ComponentRestorer] Failed to set Enum property '{propMap.RuntimePropertyName}': {ex.Message}");
-                    }
+                    catch (System.Exception ex) { MelonLogger.Warning($"[ComponentRestorer] Failed to set Enum property '{propMap.RuntimePropertyName}': {ex.Message}"); }
                 }
                 // Handle standard types
                 else
                 {
-                    // Attempt direct assignment (might need type conversion checks for robustness)
-                    runtimeProp.SetValue(target, valueToSet);
-                    if (verbose) MelonLogger.Msg($"      - Set '{propMap.RuntimePropertyName}' to {valueToSet?.ToString() ?? "null"}.");
+                    try
+                    {
+                        runtimeProp.SetValue(target, sourceValue);
+                        if (verbose) MelonLogger.Msg($"      - Set '{propMap.RuntimePropertyName}' from JSON to {sourceValue?.ToString() ?? "null"}.");
+                    }
+                    catch (System.Exception ex) { MelonLogger.Warning($"[ComponentRestorer] Failed to set property '{propMap.RuntimePropertyName}' (value: {sourceValue?.ToString() ?? "null"}) from JSON: {ex.Message}"); }
                 }
             }
             catch (System.Exception ex)
             {
-                MelonLogger.Warning($"[ComponentRestorer] Failed to set property '{propMap.RuntimePropertyName}' using mapping from '{propMap.JsonPropertyName}': {ex.Message}");
+                MelonLogger.Warning($"[ComponentRestorer] Error processing property mapping for Json:'{propMap.JsonPropertyName}' -> Runtime:'{propMap.RuntimePropertyName}': {ex.Message}");
             }
         }
         if (verbose) MelonLogger.Msg($"    - Finished applying properties for {mapping.JsonTypeName}.");
+    }
+
+    // --- NEW Smuggling Helper Functions ---
+    private static Material RetrieveSmuggledMaterial(Component target, string runtimePropName, bool verbose)
+    {
+        string placeholderName = $"[ComponentRestoration] [{runtimePropName}]";
+        Transform smugglerTransform = target.transform.Find(placeholderName);
+        Material retrievedMaterial = null;
+
+        if (smugglerTransform != null)
+        {
+            MeshRenderer meshRenderer = smugglerTransform.GetComponent<MeshRenderer>();
+            if (meshRenderer != null)
+            {
+                retrievedMaterial = meshRenderer.sharedMaterial;
+                if (verbose) MelonLogger.Msg($"          -> Found placeholder '{placeholderName}', retrieved Material '{retrievedMaterial?.name ?? "null"}' from MeshRenderer.");
+            }
+            else if (verbose) MelonLogger.Warning($"          -> Found placeholder '{placeholderName}' but it missing MeshRenderer component.");
+
+            UnityEngine.Object.Destroy(smugglerTransform.gameObject); // Clean up placeholder
+        }
+        else if (verbose) MelonLogger.Msg($"      - No placeholder found for smuggled material property '{runtimePropName}' (looked for '{placeholderName}').");
+
+        return retrievedMaterial;
+    }
+
+    private static Sprite RetrieveSmuggledSprite(Component target, string runtimePropName, bool verbose) // Example for Sprite
+    {
+        string placeholderName = $"[ComponentRestoration] [{runtimePropName}]";
+        Transform smugglerTransform = target.transform.Find(placeholderName);
+        Sprite retrievedSprite = null;
+
+        if (smugglerTransform != null)
+        {
+            // Option 1: SpriteRenderer
+            SpriteRenderer spriteRenderer = smugglerTransform.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                retrievedSprite = spriteRenderer.sprite;
+                if (verbose) MelonLogger.Msg($"          -> Found placeholder '{placeholderName}', retrieved Sprite '{retrievedSprite?.name ?? "null"}' from SpriteRenderer.");
+            }
+            else
+            {
+                 // Option 2: Image (UI)
+                 Image image = smugglerTransform.GetComponent<Image>();
+                 if(image != null) {
+                     retrievedSprite = image.sprite;
+                     if (verbose) MelonLogger.Msg($"          -> Found placeholder '{placeholderName}', retrieved Sprite '{retrievedSprite?.name ?? "null"}' from Image.");
+                 } else {
+                      if (verbose) MelonLogger.Warning($"          -> Found placeholder '{placeholderName}' but it missing SpriteRenderer or Image component.");
+                 }
+            }
+
+            UnityEngine.Object.Destroy(smugglerTransform.gameObject); // Clean up placeholder
+        }
+        else if (verbose) MelonLogger.Msg($"      - No placeholder found for smuggled sprite property '{runtimePropName}' (looked for '{placeholderName}').");
+
+        return retrievedSprite;
     }
 
     // Recursive helper to build path lookup
