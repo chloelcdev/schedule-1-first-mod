@@ -271,6 +271,39 @@ namespace ChloesManorMod
                     }
                     catch (System.Exception e) { LoggerInstance.Error($"Exception during SetParent: {e}"); return; } // Keep error
 
+                    // --- Load Hierarchy JSON ---
+                    string hierarchyJson = null;
+                    TextAsset jsonTextAsset = null;
+                    if (il2cppCustomAssetsBundle != null) // Make sure bundle is loaded
+                    {
+                        try
+                        {
+                            // Load the TextAsset (adjust name if different)
+                            jsonTextAsset = il2cppCustomAssetsBundle.LoadAsset<TextAsset>("PreBundleBuildHierarchy");
+                            if (jsonTextAsset != null)
+                            {
+                                hierarchyJson = jsonTextAsset.text;
+                                MelonLogger.Msg("[MainMod] Loaded PreBundleBuildHierarchy.json TextAsset from bundle.");
+                            }
+                            else { MelonLogger.Warning("[MainMod] Could not find 'PreBundleBuildHierarchy' TextAsset in the bundle."); }
+                        }
+                        catch (System.Exception e) { MelonLogger.Error($"[MainMod] Error loading TextAsset from bundle: {e.Message}"); }
+                    }
+                     else { MelonLogger.Error("[MainMod] Cannot load hierarchy JSON, asset bundle is null."); }
+                    // --- End Load JSON ---
+
+                    // --- Component Restoration ---
+                    if (!string.IsNullOrEmpty(hierarchyJson))
+                    {
+                        try
+                        {
+                             MelonLogger.Msg("[MainMod] Attempting component restoration from JSON...");
+                            ComponentRestorer.RestoreComponentsFromJSON(spawnedInstanceRoot, hierarchyJson, verboseLogging: true); // Set verbose true/false
+                        }
+                         catch(System.Exception e) { MelonLogger.Error($"[MainMod] Exception during ComponentRestorer execution: {e}"); }
+                    }
+                    // --- End Component Restoration ---
+
                     // ***** MOVED SHADER FIX CALL HERE *****
                     try
                     {
@@ -287,7 +320,16 @@ namespace ChloesManorMod
                     }
                     // ***** END SHADER FIX CALL *****
 
-                    // Call Configuration Helper AFTER shader fix
+                    // --- Decal Fix (Old Method - Now handled by ComponentRestorer) ---
+                    /*
+                    try
+                    {
+                        // URPShaderFix.FixDecalProjectorsRecursive(...); // COMMENT OUT or REMOVE this call
+                    }
+                     catch(System.Exception e) { // Error log }
+                    */
+
+                    // Call Configuration Helper AFTER shader and decal fixes
                     // LoggerInstance.Msg("Calling ManorSetupHelper configuration..."); // Removed verbose
                     ManorSetupHelper.ConfigureManorSetup(spawnedInstanceRoot, manorProperty); // Keep errors from helper
                     // LoggerInstance.Msg("ManorSetupHelper configuration called."); // Removed verbose
