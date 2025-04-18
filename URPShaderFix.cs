@@ -169,6 +169,13 @@ public static class URPShaderFix
                     {
                         if (decalComponent == null) continue;
 
+                        // --- Add Debug Log to check the type BEFORE casting --- 
+                        if (verboseLogging) 
+                        {
+                            MelonLogger.Msg($"    - Checking component on '{decalComponent.gameObject.name}'. Found Type: {decalComponent.GetType().FullName}");
+                        }
+                        // --- 
+
                         // --- Cast to specific type using 'as' --- 
                         UnityEngine.Rendering.Universal.DecalProjector decalProjectorInstance = 
                             decalComponent as UnityEngine.Rendering.Universal.DecalProjector; // USE 'as' operator
@@ -176,7 +183,8 @@ public static class URPShaderFix
                         if (decalProjectorInstance == null)
                         {
                              // This check is still good practice, even if unlikely with 'as'
-                             MelonLogger.Warning($"[URPShaderFix] Failed to cast Component on '{decalComponent.gameObject.name}' to DecalProjector using 'as'. Skipping material fix for this component.");
+                             // Log the type again in the error message for clarity
+                             MelonLogger.Warning($"[URPShaderFix] Failed to cast Component (Type: {decalComponent.GetType().FullName}) on '{decalComponent.gameObject.name}' to DecalProjector using 'as'. Skipping material fix for this component.");
                              continue;
                         }
                         // --- End Cast ---
