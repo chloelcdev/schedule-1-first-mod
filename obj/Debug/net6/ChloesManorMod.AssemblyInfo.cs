@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ChloesManorMod")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5e78b460d0bfb07e0d228742f9738bdbb9aa89bf")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2fc3a59bc9877f92c98867b3de06e240e6f37385")]
 [assembly: System.Reflection.AssemblyProductAttribute("ChloesManorMod")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ChloesManorMod")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
