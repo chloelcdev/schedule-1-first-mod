@@ -174,56 +174,39 @@ public static class URPShaderFix
                         {
                             MelonLogger.Msg($"    - Checking component on '{decalComponent.gameObject.name}'. Found Type: {decalComponent.GetType().FullName}");
                         }
-                        // --- 
-
-                        // --- Cast to specific type using 'as' --- 
+                        
                         UnityEngine.Rendering.Universal.DecalProjector decalProjectorInstance = 
-                            decalComponent as UnityEngine.Rendering.Universal.DecalProjector; // USE 'as' operator
+                            decalComponent as UnityEngine.Rendering.Universal.DecalProjector;
 
                         if (decalProjectorInstance == null)
                         {
-                             // This check is still good practice, even if unlikely with 'as'
-                             // Log the type again in the error message for clarity
                              MelonLogger.Warning($"[URPShaderFix] Failed to cast Component (Type: {decalComponent.GetType().FullName}) on '{decalComponent.gameObject.name}' to DecalProjector using 'as'. Skipping material fix for this component.");
                              continue;
                         }
-                        // --- End Cast ---
 
                         Material currentDecalMat = null;
-                        try
-                        {
-                            // --- Access material directly --- 
-                            currentDecalMat = decalProjectorInstance.material; 
+                        try { currentDecalMat = decalProjectorInstance.material; }
+                        catch (System.Exception ex) { MelonLogger.Warning($"[URPShaderFix] Error getting material directly from DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); continue; }
+
+                        // --- Log Material and Shader Name BEFORE processing --- 
+                        if (verboseLogging) {
+                             string matName = currentDecalMat?.name ?? "NULL Material";
+                             string shaderName = currentDecalMat?.shader?.name ?? "NULL Shader";
+                             MelonLogger.Msg($"    -> Processing Decal '{decalProjectorInstance.gameObject.name}': Material='{matName}', Shader='{shaderName}'");
                         }
-                        catch (System.Exception ex)
-                        {
-                            // Catch potential errors even with direct access (though less likely than reflection issues)
-                            MelonLogger.Warning($"[URPShaderFix] Error getting material directly from DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}");
-                            continue;
-                        }
+                        // --- 
 
                         Material originalMatInstance = currentDecalMat; 
 
                         // Process the material (passing the reference)
-                        if (ProcessMaterialFix(ref currentDecalMat, targetShaderCache, decalProjectorInstance.gameObject, -1, verboseLogging))
+                        if (ProcessMaterialFix(ref currentDecalMat, targetShaderCache, decalProjectorInstance.gameObject, -1, verboseLogging)) // Use -1 for index as it's not an array
                         {
                             totalDecalsFixed++;
-                            if (currentDecalMat != originalMatInstance) 
-                            {
-                                 if (verboseLogging) MelonLogger.Msg($"   - Reassigning modified material instance to DecalProjector on '{decalProjectorInstance.gameObject.name}'.");
-                            } else {
-                                 if (verboseLogging) MelonLogger.Msg($"   - Reassigning (potentially modified in-place) material to DecalProjector on '{decalProjectorInstance.gameObject.name}'.");
-                            }
+                            if (currentDecalMat != originalMatInstance) { /* ... Log ... */ if (verboseLogging) MelonLogger.Msg($"   - Reassigning modified material instance to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
+                            else { /* ... Log ... */ if (verboseLogging) MelonLogger.Msg($"   - Reassigning (potentially modified in-place) material to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
                             
-                            try
-                            {
-                                // --- Set material directly --- 
-                                decalProjectorInstance.material = currentDecalMat;
-                            }
-                            catch (System.Exception ex)
-                            {
-                                MelonLogger.Error($"[URPShaderFix] Error setting material directly onto DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}");
-                            }
+                            try { decalProjectorInstance.material = currentDecalMat; }
+                            catch (System.Exception ex) { MelonLogger.Error($"[URPShaderFix] Error setting material directly onto DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); }
                         }
                     }
                 // }
@@ -255,8 +238,14 @@ public static class URPShaderFix
 
         string ownerName = ownerGO?.name ?? "UnknownOwner";
         string materialIdentifier = $"Material '{mat.name}' on '{ownerName}'" + (materialIndex >= 0 ? $" (Index {materialIndex})" : " (Decal)");
+        
+        // --- Log Entry --- 
+        if(verboseLogging) MelonLogger.Msg($"      >> ProcessMaterialFix started for {materialIdentifier}");
 
         Shader currentShader = mat.shader;
+        string currentShaderName = currentShader?.name ?? "NULL";
+        if(verboseLogging) MelonLogger.Msg($"         Current Shader Name: '{currentShaderName}'");
+
         ShaderFixConfig matchingConfig = null;
 
         // Find matching config based on current shader name
@@ -264,44 +253,51 @@ public static class URPShaderFix
         {
             foreach (var config in FixConfigs)
             {
-                if (currentShader.name == config.ProblematicShaderName)
+                if (currentShaderName == config.ProblematicShaderName) // Use cached name
                 {
                     matchingConfig = config;
                     break;
                 }
             }
         }
-        else // Handle null shader case
-        {
-            matchingConfig = FixConfigs.Find(cfg => cfg.ProblematicShaderName == "Universal Render Pipeline/Lit"); // Example default
-            if (verboseLogging && matchingConfig != null) MelonLogger.Msg($"   - {materialIdentifier} has NULL shader. Will attempt fix using '{matchingConfig.TargetShaderName}'.", ownerGO);
-            else if (verboseLogging) MelonLogger.Msg($"   - {materialIdentifier} has NULL shader. No default fix configured.", ownerGO);
-        }
+        // Removed null shader handling block as it likely won't apply here
 
-        if (matchingConfig == null) return false; // No config found for this shader
+        if (matchingConfig == null) {
+            if(verboseLogging) MelonLogger.Msg($"         No matching config found for shader '{currentShaderName}'. Skipping fix.");
+            return false; 
+        }
+        if(verboseLogging) MelonLogger.Msg($"         Found matching config: Problematic='{matchingConfig.ProblematicShaderName}', Target='{matchingConfig.TargetShaderName}'");
+
 
         // Find target shader (use cache)
         Shader targetShaderInstance = null;
         if (!targetShaderCache.TryGetValue(matchingConfig.TargetShaderName, out targetShaderInstance))
         {
+            if(verboseLogging) MelonLogger.Msg($"         Target shader '{matchingConfig.TargetShaderName}' not in cache. Finding...");
             targetShaderInstance = Shader.Find(matchingConfig.TargetShaderName);
-            if (targetShaderInstance != null) { targetShaderCache[matchingConfig.TargetShaderName] = targetShaderInstance; }
+            if (targetShaderInstance != null) { 
+                targetShaderCache[matchingConfig.TargetShaderName] = targetShaderInstance; 
+                if(verboseLogging) MelonLogger.Msg($"         Found and cached target shader '{targetShaderInstance.name}'.");
+            }
             else
             {
                 MelonLogger.Error($"[URPShaderFix] Could not find target shader '{matchingConfig.TargetShaderName}' for {materialIdentifier}. Skipping fix.", ownerGO);
                 return false;
             }
         }
+        else {
+             if(verboseLogging) MelonLogger.Msg($"         Found target shader '{matchingConfig.TargetShaderName}' in cache.");
+        }
 
         // Check if shader needs changing
         if (currentShader == targetShaderInstance)
         {
-             // if (verboseLogging) MelonLogger.Msg($"   - Shader already correct for {materialIdentifier}."); // Reduced log noise
+             if (verboseLogging) MelonLogger.Msg($"         Shader already correct for {materialIdentifier}. No change needed.");
              return false; // No change needed
         }
         
         // --- Shader needs fixing ---
-        if (verboseLogging) MelonLogger.Msg($"   - Fixing Shader for {materialIdentifier}. From: '{(currentShader?.name ?? "NULL")}' To: '{targetShaderInstance.name}'");
+        if (verboseLogging) MelonLogger.Msg($"         Attempting shader fix for {materialIdentifier}. From: '{currentShaderName}' To: '{targetShaderInstance.name}'");
 
         // Store old values before changing shader
         Dictionary<string, Texture> originalTextures = new Dictionary<string, Texture>();
@@ -314,7 +310,10 @@ public static class URPShaderFix
             string originalPropName = kvp.Key;
             if (mat.HasProperty(originalPropName))
             {
-                try { originalTextures[originalPropName] = mat.GetTexture(originalPropName); }
+                try { 
+                    originalTextures[originalPropName] = mat.GetTexture(originalPropName); 
+                    if(verboseLogging) MelonLogger.Msg($"           Stored Texture['{originalPropName}']: {originalTextures[originalPropName]?.name ?? "NULL"}");
+                }
                 catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed getting Texture from '{originalPropName}': {e.Message}"); }
             }
         }
@@ -324,7 +323,10 @@ public static class URPShaderFix
             string originalPropName = kvp.Key;
             if (mat.HasProperty(originalPropName))
             {
-                try { originalColors[originalPropName] = mat.GetColor(originalPropName); }
+                try { 
+                    originalColors[originalPropName] = mat.GetColor(originalPropName); 
+                     if(verboseLogging) MelonLogger.Msg($"           Stored Color['{originalPropName}']: {originalColors[originalPropName]}");
+                }
                 catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed getting Color from '{originalPropName}': {e.Message}"); }
             }
         }
@@ -334,7 +336,10 @@ public static class URPShaderFix
             string originalPropName = kvp.Key;
             if (mat.HasProperty(originalPropName))
             {
-                try { originalFloats[originalPropName] = mat.GetFloat(originalPropName); }
+                try { 
+                    originalFloats[originalPropName] = mat.GetFloat(originalPropName); 
+                     if(verboseLogging) MelonLogger.Msg($"           Stored Float['{originalPropName}']: {originalFloats[originalPropName]}");
+                }
                 catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed getting Float from '{originalPropName}': {e.Message}"); }
             }
         }
@@ -342,9 +347,8 @@ public static class URPShaderFix
         // Change the shader
         try
         {
-            // Note: Setting shader often creates a new material instance.
-            // The 'ref mat' might now point to the new instance if Unity does this behind the scenes.
             mat.shader = targetShaderInstance; 
+            if(verboseLogging) MelonLogger.Msg($"         -> Assigned target shader '{targetShaderInstance.name}'. Applying properties...");
 
             // Apply stored values using TARGET names
             // Apply Textures
@@ -352,7 +356,10 @@ public static class URPShaderFix
             {
                 if (originalTextures.TryGetValue(kvp.Key, out Texture storedTex) && mat.HasProperty(kvp.Value))
                 {
-                    try { mat.SetTexture(kvp.Value, storedTex); }
+                    try { 
+                        mat.SetTexture(kvp.Value, storedTex); 
+                        if(verboseLogging) MelonLogger.Msg($"           Applied Texture['{kvp.Value}']: {storedTex?.name ?? "NULL"}");
+                    }
                     catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed setting Texture to '{kvp.Value}': {e.Message}"); }
                 }
             }
@@ -361,7 +368,10 @@ public static class URPShaderFix
             {
                 if (originalColors.TryGetValue(kvp.Key, out Color storedColor) && mat.HasProperty(kvp.Value))
                 {
-                    try { mat.SetColor(kvp.Value, storedColor); }
+                    try { 
+                        mat.SetColor(kvp.Value, storedColor); 
+                         if(verboseLogging) MelonLogger.Msg($"           Applied Color['{kvp.Value}']: {storedColor}");
+                    }
                     catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed setting Color to '{kvp.Value}': {e.Message}"); }
                 }
             }
@@ -370,17 +380,21 @@ public static class URPShaderFix
             {
                 if (originalFloats.TryGetValue(kvp.Key, out float storedFloat) && mat.HasProperty(kvp.Value))
                 {
-                    try { mat.SetFloat(kvp.Value, storedFloat); }
+                    try { 
+                        mat.SetFloat(kvp.Value, storedFloat); 
+                         if(verboseLogging) MelonLogger.Msg($"           Applied Float['{kvp.Value}']: {storedFloat}");
+                    }
                     catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed setting Float to '{kvp.Value}': {e.Message}"); }
                 }
             }
 
-            if (verboseLogging) MelonLogger.Msg($"     -> SUCCESS applying shader and properties to {materialIdentifier}.");
+            if (verboseLogging) MelonLogger.Msg($"      << SUCCESS applying shader and properties to {materialIdentifier}.");
             return true; // Material was modified
         }
         catch (System.Exception e)
         {
             MelonLogger.Error($"     -> FAILED during shader/property update for {materialIdentifier}: {e.Message}", ownerGO);
+             if (verboseLogging) MelonLogger.Msg($"      << FAILED shader/property update for {materialIdentifier}.");
             return false; // Modification failed
         }
     }

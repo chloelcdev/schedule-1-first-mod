@@ -21,6 +21,7 @@ using Il2CppScheduleOne.NPCs.Schedules; // For NPCEvent_LocationDialogue
 using Ray = Il2CppScheduleOne.NPCs.CharacterClasses.Ray; // Assuming Ray is a subclass of NPC
 using System.Collections; // Required for IEnumerator
 using Il2CppScheduleOne.Vehicles; // Needed for LandVehicle
+using UnityEngine.Rendering.Universal;
 
 // === FishNet using Statements ===
 // You MUST add a reference to Il2CppFishNet.Runtime.dll in Visual Studio
@@ -82,6 +83,7 @@ namespace ChloesManorMod
             {
                 LoggerInstance.Error($"Failed to apply Harmony patches: {e}");
             }
+            LoggerInstance.Msg("Chloe's Manor Mod Initialized!");
         }
 
         // --- ADDED: Helper method to log URP version ---
@@ -443,7 +445,36 @@ namespace ChloesManorMod
                 }
             }
             // --- End F7 Teleport Debug ---
-        } // End OnUpdate
+
+            CheckForDecalDebugInput(); // Call the new debug method
+        }
+
+        // --- NEW DEBUG METHOD ---
+        private void CheckForDecalDebugInput()
+        {
+            if (Input.GetKeyDown(KeyCode.L))
+            {
+                LoggerInstance.Msg("'L' key pressed, searching for LoadingDock DecalProjector...");
+                DecalProjector[] allDecals = GameObject.FindObjectsOfType<DecalProjector>();
+                bool found = false;
+                foreach (DecalProjector decal in allDecals)
+                {
+                    // Simple check - might need refinement based on actual hierarchy/naming
+                    if (decal.gameObject.name.IndexOf("LoadingDock", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        Vector3 size = decal.size;
+                        LoggerInstance.Msg($"Found LoadingDock Decal: '{decal.gameObject.name}'. Size: (Width={size.x}, Height={size.y}, Depth={size.z})");
+                        found = true;
+                        break; // Found one, stop searching
+                    }
+                }
+                if (!found)
+                {
+                    LoggerInstance.Msg("No DecalProjector found on a GameObject with 'LoadingDock' in its name.");
+                }
+            }
+        }
+        // --- END NEW DEBUG METHOD ---
 
         // Keep dialogue modification methods/logs if that feature is still intended
         //ModifyEstateAgentChoicesDirectly();

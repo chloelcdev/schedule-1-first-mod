@@ -7,10 +7,6 @@
       "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:componentrestorer.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\estateagentpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:estateagentpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\chloesmanormod.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
       "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:chloesmanormod.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
     },
@@ -19,20 +15,32 @@
       "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:mainmod.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\manorsetuphelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:manorsetuphelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\cleanerconfigurationdebugpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:cleanerconfigurationdebugpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\cleanertaskdebugpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:cleanertaskdebugpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\estateagentpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:estateagentpatch.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\chloemanorsetup||{25834150-CD7E-11D0-92DF-00A0C9138C45}",
+      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:chloemanorsetup||{25834150-CD7E-11D0-92DF-00A0C9138C45}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\urpshaderfix.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:urpshaderfix.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\manorsetup_chloe.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:manorsetup_chloe.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\manorsetuphelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:manorsetuphelper.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\chloemanorsetup||{25834150-CD7E-11D0-92DF-00A0C9138C45}",
-      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:chloemanorsetup||{25834150-CD7E-11D0-92DF-00A0C9138C45}"
+      "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\manorsetup_chloe.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|solutionrelative:manorsetup_chloe.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{8F3D375D-015B-5461-3276-1E6E0767B0E2}|ChloesManorMod.csproj|c:\\users\\chloe\\documents\\unity projects\\theengine\\schedule-1-smart-employees\\readme.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
@@ -67,11 +75,37 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "CleanerConfigurationDebugPatch.cs",
+              "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\CleanerConfigurationDebugPatch.cs",
+              "RelativeDocumentMoniker": "CleanerConfigurationDebugPatch.cs",
+              "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\CleanerConfigurationDebugPatch.cs",
+              "RelativeToolTip": "CleanerConfigurationDebugPatch.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAABIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-18T12:18:06.351Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "CleanerTaskDebugPatch.cs",
+              "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\CleanerTaskDebugPatch.cs",
+              "RelativeDocumentMoniker": "CleanerTaskDebugPatch.cs",
+              "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\CleanerTaskDebugPatch.cs",
+              "RelativeToolTip": "CleanerTaskDebugPatch.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAIA9wNIAAABUAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-18T11:54:20.126Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Bookmark",
@@ -85,26 +119,27 @@
               "RelativeDocumentMoniker": "ComponentRestorer.cs",
               "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ComponentRestorer.cs",
               "RelativeToolTip": "ComponentRestorer.cs",
-              "ViewState": "AgIAAKgAAAAAAAAAAAAowL0AAAAFAAAAAAAAAA==",
+              "ViewState": "AgIAAN8BAAAAAAAAAAAMwO0BAAAOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-04-17T02:27:09.412Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 2,
               "Title": "MainMod.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\MainMod.cs",
               "RelativeDocumentMoniker": "MainMod.cs",
               "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\MainMod.cs",
               "RelativeToolTip": "MainMod.cs",
-              "ViewState": "AgIAAPUAAAAAAAAAAAASwP8AAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAB8AAAAAAAAAAAAAADMAAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-16T22:31:43.805Z"
+              "WhenOpened": "2025-04-16T22:31:43.805Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 7,
               "Title": "URPShaderFix.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\URPShaderFix.cs",
               "RelativeDocumentMoniker": "URPShaderFix.cs",
@@ -112,11 +147,12 @@
               "RelativeToolTip": "URPShaderFix.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-16T16:13:26.349Z"
+              "WhenOpened": "2025-04-16T16:13:26.349Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 7,
+              "DocumentIndex": 6,
               "Title": "chloemanorsetup",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\chloemanorsetup",
               "RelativeDocumentMoniker": "chloemanorsetup",
@@ -127,7 +163,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 8,
+              "DocumentIndex": 10,
               "Title": "README.md",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\README.md",
               "RelativeDocumentMoniker": "README.md",
@@ -139,7 +175,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 9,
               "Title": "ManorSetup_Chloe.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ManorSetup_Chloe.cs",
               "RelativeDocumentMoniker": "ManorSetup_Chloe.cs",
@@ -151,7 +187,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 9,
+              "DocumentIndex": 11,
               "Title": "DeliveryDebugs.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\DeliveryDebugs.cs",
               "RelativeDocumentMoniker": "DeliveryDebugs.cs",
@@ -163,7 +199,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 10,
+              "DocumentIndex": 12,
               "Title": "GridItem.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Desktop\\Schedule 1 Modding\\MonoRip\\ScheduleOneMonoRip\\Assets\\Scripts\\Assembly-CSharp\\ScheduleOne\\EntityFramework\\GridItem.cs",
               "RelativeDocumentMoniker": "..\\..\\..\\..\\Desktop\\Schedule 1 Modding\\MonoRip\\ScheduleOneMonoRip\\Assets\\Scripts\\Assembly-CSharp\\ScheduleOne\\EntityFramework\\GridItem.cs",
@@ -175,7 +211,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 11,
+              "DocumentIndex": 13,
               "Title": "Grid.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Desktop\\Schedule 1 Modding\\MonoRip\\ScheduleOneMonoRip\\Assets\\Scripts\\Assembly-CSharp\\ScheduleOne\\Tiles\\Grid.cs",
               "RelativeDocumentMoniker": "..\\..\\..\\..\\Desktop\\Schedule 1 Modding\\MonoRip\\ScheduleOneMonoRip\\Assets\\Scripts\\Assembly-CSharp\\ScheduleOne\\Tiles\\Grid.cs",
@@ -187,20 +223,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 5,
               "Title": "EstateAgentPatch.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\EstateAgentPatch.cs",
               "RelativeDocumentMoniker": "EstateAgentPatch.cs",
               "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\EstateAgentPatch.cs",
               "RelativeToolTip": "EstateAgentPatch.cs",
-              "ViewState": "AgIAABEAAAAAAAAAAAAQwCAAAAANAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACAAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-04-14T16:59:10.685Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 14,
               "Title": "ChloesManorMod",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ChloesManorMod.csproj",
               "RelativeDocumentMoniker": "ChloesManorMod.csproj",
@@ -212,7 +248,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 13,
+              "DocumentIndex": 15,
               "Title": "Microsoft.Common.CurrentVersion.targets",
               "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
               "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\..\\Program Files\\Microsoft Visual Studio\\2022\\Community\\MSBuild\\Current\\Bin\\amd64\\Microsoft.Common.CurrentVersion.targets",
@@ -224,7 +260,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 8,
               "Title": "ManorSetupHelper.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ManorSetupHelper.cs",
               "RelativeDocumentMoniker": "ManorSetupHelper.cs",
@@ -236,20 +272,20 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "ChloesManorMod.csproj",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ChloesManorMod.csproj",
               "RelativeDocumentMoniker": "ChloesManorMod.csproj",
               "ToolTip": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\ChloesManorMod.csproj",
               "RelativeToolTip": "ChloesManorMod.csproj",
-              "ViewState": "AgIAAEEAAAAAAAAAAAAhwFkAAAADAAAAAAAAAA==",
+              "ViewState": "AgIAAEQAAAAAAAAAAAAhwGAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
               "WhenOpened": "2025-04-16T10:09:45.729Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 16,
               "Title": "Il2CppAssetBundleManager.cs",
               "DocumentMoniker": "C:\\Users\\chloe\\Documents\\Unity Projects\\TheEngine\\schedule-1-smart-employees\\libs\\UnityUtilities\\UnityEngine.Il2CppAssetBundleManager\\Il2CppAssetBundleManager.cs",
               "RelativeDocumentMoniker": "libs\\UnityUtilities\\UnityEngine.Il2CppAssetBundleManager\\Il2CppAssetBundleManager.cs",

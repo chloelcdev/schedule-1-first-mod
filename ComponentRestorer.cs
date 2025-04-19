@@ -5,9 +5,13 @@ using System.Reflection;
 using Il2CppInterop.Runtime;
 using UnityEngine;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI; // Example if smuggling Sprites via Image
 using ComponentRestoration.Data; // ADDED using for shared data structures
+
+using Unity.AI.Navigation; // <-- ADDED
+using UnityEngine.AI;
 
 // --- Configuration Structures --- 
 public class ComponentTypeMapping
@@ -57,6 +61,12 @@ public static class ComponentRestorer
         );
 
         // --- Add mappings for other types here using AddMapping() --- 
+        // NavMeshSurface Mapping
+        AddMapping(verboseLogging,
+            "Unity.AI.Navigation.NavMeshSurface", // JSON Type Name
+            ApplyNavMeshSurface // NEW combined action function
+        );
+        
         /* Example: Rigidbody
         AddMapping(verboseLogging, 
             "UnityEngine.Rigidbody", 
@@ -296,6 +306,56 @@ public static class ComponentRestorer
         return null;
     }
 
+    // --- NEW Helper Function for Property Retrieval and Conversion ---
+    private static T GetValue<T>(Dictionary<string, object> properties, string key, bool verbose, T defaultValue = default)
+    {
+        if (properties == null)
+        {
+            if (verbose) MelonLogger.Warning($"[GetValue] Properties dictionary is null. Cannot get key '{key}'. Returning default.");
+            return defaultValue;
+        }
+
+        if (properties.TryGetValue(key, out object valueObj))
+        {
+            try
+            {
+                // Handle common Newtonsoft numeric types
+                if (typeof(T) == typeof(float) && valueObj is double) return (T)(object)Convert.ToSingle(valueObj);
+                if (typeof(T) == typeof(double) && valueObj is double) return (T)(object)valueObj; // Already double
+                if (typeof(T) == typeof(int) && valueObj is long) return (T)(object)Convert.ToInt32(valueObj);
+                if (typeof(T) == typeof(uint) && valueObj is long) return (T)(object)Convert.ToUInt32(valueObj);
+                if (typeof(T) == typeof(long) && valueObj is long) return (T)(object)valueObj; // Already long
+                
+                // Handle Vectors (might come as JObject)
+                if (typeof(T) == typeof(Vector2) && valueObj is JObject v2JObj)
+                    return (T)(object)new Vector2(v2JObj["x"].Value<float>(), v2JObj["y"].Value<float>());
+                if (typeof(T) == typeof(Vector3) && valueObj is JObject v3JObj)
+                    return (T)(object)new Vector3(v3JObj["x"].Value<float>(), v3JObj["y"].Value<float>(), v3JObj["z"].Value<float>());
+
+                // LayerMask handling (stored as int/long)
+                if (typeof(T) == typeof(LayerMask))
+                {
+                     if (valueObj is long lmLong) return (T)(object)(LayerMask)Convert.ToInt32(lmLong);
+                     if (valueObj is int lmInt) return (T)(object)(LayerMask)lmInt;
+                }
+
+                // Default: Use Convert.ChangeType for enums (stored as long/int) or other direct conversions
+                // Note: Enums stored as int/long by Extractor will be converted correctly here.
+                return (T)Convert.ChangeType(valueObj, typeof(T));
+            }
+            catch (Exception e)
+            {
+                // Improved error logging
+                MelonLogger.Warning($"[GetValue] Failed converting property '{key}' to {typeof(T).Name}. Exception: {e.Message}. (Value: '{valueObj}', Type: {valueObj?.GetType().Name})");
+                return defaultValue;
+            }
+        }
+        // Only log if verbose and key not found
+        if (verbose) MelonLogger.Warning($"[GetValue] Property '{key}' not found in JSON data."); 
+        return defaultValue;
+    }
+    // --- END Helper Function ---
+
     // --- NEW Combined Apply function for DecalProjector --- 
     private static void ApplyDecalProjector(GameObject targetGO, ComponentData data, bool verbose)
     {
@@ -320,44 +380,52 @@ public static class ComponentRestorer
         // Apply properties directly
         if (verbose) MelonLogger.Msg($"    - Applying DecalProjector specific properties...");
 
-        // Direct assignments (Add null checks for safety on data fields? Assumed valid from JSON for now)
-        try { decalProjector.drawDistance = data.drawDistance; if(verbose) MelonLogger.Msg($"      - Set drawDistance = {data.drawDistance}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting drawDistance: {e.Message}"); }
+        // --- Check if Properties dictionary exists ---
+        if (data.Properties == null)
+        {
+            if (verbose) MelonLogger.Warning($"    - No 'Properties' dictionary found in JSON data for DecalProjector on '{targetGO.name}'. Skipping property application.");
+            return; // Can't apply properties if the dictionary is missing
+        }
+
+        // --- Apply properties from dictionary using GetValue helper ---
+        try { decalProjector.drawDistance = GetValue<float>(data.Properties, "drawDistance", verbose); if(verbose) MelonLogger.Msg($"      - Set drawDistance = {decalProjector.drawDistance}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying drawDistance: {e.Message}"); }
         
-        try { decalProjector.fadeScale = data.fadeScale; if(verbose) MelonLogger.Msg($"      - Set fadeScale = {data.fadeScale}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting fadeScale: {e.Message}"); }
+        try { decalProjector.fadeScale = GetValue<float>(data.Properties, "fadeScale", verbose); if(verbose) MelonLogger.Msg($"      - Set fadeScale = {decalProjector.fadeScale}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying fadeScale: {e.Message}"); }
         
-        try { decalProjector.startAngleFade = data.startAngleFade; if(verbose) MelonLogger.Msg($"      - Set startAngleFade = {data.startAngleFade}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting startAngleFade: {e.Message}"); }
+        try { decalProjector.startAngleFade = GetValue<float>(data.Properties, "startAngleFade", verbose); if(verbose) MelonLogger.Msg($"      - Set startAngleFade = {decalProjector.startAngleFade}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying startAngleFade: {e.Message}"); }
         
-        try { decalProjector.endAngleFade = data.endAngleFade; if(verbose) MelonLogger.Msg($"      - Set endAngleFade = {data.endAngleFade}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting endAngleFade: {e.Message}"); }
+        try { decalProjector.endAngleFade = GetValue<float>(data.Properties, "endAngleFade", verbose); if(verbose) MelonLogger.Msg($"      - Set endAngleFade = {decalProjector.endAngleFade}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying endAngleFade: {e.Message}"); }
         
-        try { decalProjector.uvScale = data.uvScale; if(verbose) MelonLogger.Msg($"      - Set uvScale = {data.uvScale}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting uvScale: {e.Message}"); }
+        try { decalProjector.uvScale = GetValue<Vector2>(data.Properties, "uvScale", verbose); if(verbose) MelonLogger.Msg($"      - Set uvScale = {decalProjector.uvScale}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying uvScale: {e.Message}"); }
         
-        try { decalProjector.uvBias = data.uvBias; if(verbose) MelonLogger.Msg($"      - Set uvBias = {data.uvBias}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting uvBias: {e.Message}"); }
+        try { decalProjector.uvBias = GetValue<Vector2>(data.Properties, "uvBias", verbose); if(verbose) MelonLogger.Msg($"      - Set uvBias = {decalProjector.uvBias}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying uvBias: {e.Message}"); }
         
-        try { decalProjector.renderingLayerMask = data.renderingLayerMask; if(verbose) MelonLogger.Msg($"      - Set renderingLayerMask = {data.renderingLayerMask}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting renderingLayerMask: {e.Message}"); }
+        try { decalProjector.renderingLayerMask = GetValue<uint>(data.Properties, "renderingLayerMask", verbose); if(verbose) MelonLogger.Msg($"      - Set renderingLayerMask = {decalProjector.renderingLayerMask}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying renderingLayerMask: {e.Message}"); }
         
-        try { decalProjector.pivot = data.pivot; if(verbose) MelonLogger.Msg($"      - Set pivot = {data.pivot}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting pivot: {e.Message}"); }
+        try { decalProjector.pivot = GetValue<Vector3>(data.Properties, "pivot", verbose); if(verbose) MelonLogger.Msg($"      - Set pivot = {decalProjector.pivot}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying pivot: {e.Message}"); }
         
-        try { decalProjector.size = data.size; if(verbose) MelonLogger.Msg($"      - Set size = {data.size}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting size: {e.Message}"); }
+        try { decalProjector.size = GetValue<Vector3>(data.Properties, "size", verbose); if(verbose) MelonLogger.Msg($"      - Set size = {decalProjector.size}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying size: {e.Message}"); }
         
-        try { decalProjector.fadeFactor = data.fadeFactor; if(verbose) MelonLogger.Msg($"      - Set fadeFactor = {data.fadeFactor}"); } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting fadeFactor: {e.Message}"); }
+        try { decalProjector.fadeFactor = GetValue<float>(data.Properties, "fadeFactor", verbose); if(verbose) MelonLogger.Msg($"      - Set fadeFactor = {decalProjector.fadeFactor}"); } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Error applying fadeFactor: {e.Message}"); }
 
         // Enum assignment
         try 
         {
-            decalProjector.scaleMode = (DecalScaleMode)data.scaleMode; 
-            if(verbose) MelonLogger.Msg($"      - Set scaleMode = {(DecalScaleMode)data.scaleMode} (from int {data.scaleMode})");
+            int scaleModeInt = GetValue<int>(data.Properties, "scaleMode", verbose);
+            decalProjector.scaleMode = (DecalScaleMode)scaleModeInt; 
+            if(verbose) MelonLogger.Msg($"      - Set scaleMode = {(DecalScaleMode)scaleModeInt} (from int {scaleModeInt})");
         } 
-        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting scaleMode: {e.Message}"); }
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting scaleMode: {e.Message}"); } // Removed value logging as it's complex
 
         // Smuggled material assignment
         try
@@ -373,6 +441,82 @@ public static class ComponentRestorer
         catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting material from smuggler: {e.Message}"); }
 
         if (verbose) MelonLogger.Msg($"    - Finished applying DecalProjector specific properties.");
+    }
+
+    // --- NEW Combined Apply function for NavMeshSurface ---
+    private static void ApplyNavMeshSurface(GameObject targetGO, ComponentData data, bool verbose)
+    {
+        if (targetGO == null) return;
+
+        // Find or Add the component
+        NavMeshSurface navMeshSurface = targetGO.GetComponent<NavMeshSurface>();
+        bool added = false;
+        if (navMeshSurface == null)
+        {
+            if (verbose) MelonLogger.Msg($"    - NavMeshSurface not found on '{targetGO.name}'. Adding...");
+            navMeshSurface = targetGO.AddComponent<NavMeshSurface>();
+            if (navMeshSurface == null) { // Check if AddComponent failed
+                MelonLogger.Error($"[ComponentRestorer] Failed to add NavMeshSurface component to '{targetGO.name}'.");
+                return;
+            }
+            added = true;
+        }
+        else
+        {
+            if (verbose) MelonLogger.Msg($"    - Found existing NavMeshSurface on '{targetGO.name}'.");
+        }
+
+        // Apply properties directly from ComponentData fields
+        if (verbose) MelonLogger.Msg($"    - Applying NavMeshSurface specific properties from ComponentData fields...");
+
+        // --- Check if Properties dictionary exists ---
+        if (data.Properties == null)
+        {
+            if (verbose) MelonLogger.Warning($"    - No 'Properties' dictionary found in JSON data for NavMeshSurface on '{targetGO.name}'. Skipping property application.");
+            return; // Can't apply properties if the dictionary is missing
+        }
+
+        // --- Apply properties from dictionary using GetValue helper ---
+        try { 
+            int agentTypeId = GetValue<int>(data.Properties, "agentTypeID", verbose);
+            navMeshSurface.agentTypeID = agentTypeId; 
+            if(verbose) MelonLogger.Msg($"      - Set agentTypeID = {agentTypeId}"); 
+        } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting agentTypeID: {e.Message}"); }
+
+        try { 
+            int collectObjectsInt = GetValue<int>(data.Properties, "collectObjects", verbose);
+            navMeshSurface.collectObjects = (CollectObjects)collectObjectsInt; 
+            if(verbose) MelonLogger.Msg($"      - Set collectObjects = {(CollectObjects)collectObjectsInt} (from int {collectObjectsInt})"); 
+        } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting collectObjects: {e.Message}"); }
+        
+        try { 
+            LayerMask layerMaskValue = GetValue<LayerMask>(data.Properties, "layerMask", verbose);
+            navMeshSurface.layerMask = layerMaskValue;
+            if(verbose) MelonLogger.Msg($"      - Set layerMask = {layerMaskValue.value} (int value)"); 
+        } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting layerMask: {e.Message}"); }
+
+        try { 
+            int useGeometryInt = GetValue<int>(data.Properties, "useGeometry", verbose);
+            navMeshSurface.useGeometry = (NavMeshCollectGeometry)useGeometryInt;
+            if(verbose) MelonLogger.Msg($"      - Set useGeometry = {(NavMeshCollectGeometry)useGeometryInt} (from int {useGeometryInt})"); 
+        } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting useGeometry: {e.Message}"); }
+
+        try { 
+            int defaultAreaInt = GetValue<int>(data.Properties, "defaultArea", verbose);
+            navMeshSurface.defaultArea = defaultAreaInt;
+            if(verbose) MelonLogger.Msg($"      - Set defaultArea = {defaultAreaInt}"); 
+        } 
+        catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting defaultArea: {e.Message}"); }
+
+
+        if (verbose) MelonLogger.Msg($"    - Finished applying NavMeshSurface specific properties.");
+        
+        // IMPORTANT: We only restore the settings. The actual baking needs to be triggered elsewhere.
+        MelonLogger.Warning($"[ComponentRestorer] Restored NavMeshSurface settings on '{targetGO.name}'. BuildNavMesh() was NOT called. Runtime logic must trigger baking if needed.");
     }
 
     // ... (Smuggling Helpers, BuildPathLookup, FindTypeInLoadedAssemblies) ...
