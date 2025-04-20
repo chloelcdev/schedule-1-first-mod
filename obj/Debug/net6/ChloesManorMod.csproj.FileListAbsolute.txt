@@ -56,3 +56,4 @@ C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Unity.AI.Navigation.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.AIModule.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Newtonsoft.Json.dll
+C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.PropertiesModule.dll

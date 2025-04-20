@@ -12,7 +12,7 @@ using System; // For Exception, Type
 using UnityEngine; // ADDED for Transform and Vector3
 
 namespace ChloesManorMod // Use your mod's namespace
-{
+{/*
     [HarmonyPatch(typeof(Cleaner))] 
     internal static class CleanerTaskDebugPatch
     {
@@ -242,5 +242,5 @@ namespace ChloesManorMod // Use your mod's namespace
         // --- END NEW PATCH --- 
 
         // TODO: Add reflection helpers here if needed
-    }
+    }*/
 } 

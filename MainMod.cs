@@ -1,36 +1,28 @@
 using MelonLoader;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using System.IO;
+using UnityEngine.AI;
 using System.Reflection;
-using System.Collections.Generic;
-using System.Linq;
-using Il2CppInterop.Runtime;
-using Il2CppInterop.Runtime.InteropTypes;
 using Il2CppInterop.Runtime.InteropTypes.Arrays; // For Il2CppReferenceArray<>
 using Il2CppScheduleOne.Property;
-using Il2CppScheduleOne.Delivery;
 using Il2CppScheduleOne.PlayerScripts;
-using Il2CppScheduleOne.Map;
-using HarmonyLib;
-using Il2CppInterop.Runtime.Attributes;
 using Il2CppScheduleOne.Dialogue; // For DialogueContainer, DialogueNodeData, DialogueChoiceData
-using Il2CppSystem;             // For Guid
 using Il2CppScheduleOne.NPCs; // For NPC base class and potentially Ray
 using Il2CppScheduleOne.NPCs.Schedules; // For NPCEvent_LocationDialogue
-using Ray = Il2CppScheduleOne.NPCs.CharacterClasses.Ray; // Assuming Ray is a subclass of NPC
+using Unity.AI.Navigation;
 using System.Collections; // Required for IEnumerator
-using Il2CppScheduleOne.Vehicles; // Needed for LandVehicle
 using UnityEngine.Rendering.Universal;
+using System.Collections.Generic; // Needed for List<T> and Dictionary<K,V>
 
 // === FishNet using Statements ===
 // You MUST add a reference to Il2CppFishNet.Runtime.dll in Visual Studio
 using Il2CppFishNet.Object;        // For NetworkObject
 using Il2CppFishNet.Managing;      // For NetworkManager, InstanceFinder
 using Il2CppFishNet.Managing.Server; // For ServerManager
-using Il2CppFishNet.Connection;    // For NetworkConnection (needed for Spawn overload)
 // using FishNet.Transporting; // Might be needed for Channel enum? Not used directly here.
 // === End FishNet using ===
+
+
+using Ray = Il2CppScheduleOne.NPCs.CharacterClasses.Ray; // Assuming Ray is a subclass of NPC
 
 [assembly: MelonInfo(typeof(ChloesManorMod.MainMod), BuildInfo.Name, BuildInfo.Version, BuildInfo.Author, BuildInfo.DownloadLink)]
 [assembly: MelonColor()]
@@ -51,7 +43,29 @@ namespace ChloesManorMod
     public partial class MainMod : MelonMod
     {
         private static Il2CppAssetBundle il2cppCustomAssetsBundle;
-    private static GameObject manorSetupPrefab;
+        private static GameObject manorSetupPrefab;
+
+        // List of objects to disable before ManorSetup is instantiated
+        private static readonly List<string> objectsToDisableBeforeSetup = new List<string>
+        {
+            // replace mansion door
+            "@Properties/Manor/House/Door Frames/Mansion Door Frame",
+            "@Properties/Manor/House/MansionDoor",
+            "@Properties/Manor/House/mansion/DoorFrame",
+
+            // break down front wallfor testing
+            /*"@Properties/Manor/House/mansion/Downstairs Exterior Walls",
+            "@Properties/Manor/House/mansion/Downstairs Interior Walls",
+            "@Properties/Manor/House/mansion/Skirt.002",
+            "@Properties/Manor/House/mansion/Skirt.003",
+            "@Properties/Manor/House/Room (2)/ModularSwitch (2)",
+
+            "@Properties/Manor/House/WallLantern (1)",
+            "@Properties/Manor/House/WallLantern",
+            "@Properties/Manor/House/Colliders/ExteriorDoorFrameCollider",*/
+
+
+        };
 
         private const string BundleName = "chloemanorsetup";
         private const string PrefabName = "ManorSetup-Chloe";
@@ -62,16 +76,22 @@ namespace ChloesManorMod
         private static NetworkObject spawnedNetworkObject = null;
 
         private const string RootObjectName = "ManorSetup-Chloe";
-        private const string CubeTest1Name = "Cube Test";
-        private const string CubeTest2Name = "Cube Test 2";
 
         private static bool dialogueModified = false;
+
+        // --- Teleporter Manager Fields ---
+        private List<(Transform source, Transform target)> teleporterPairs = new List<(Transform, Transform)>();
+        private Dictionary<GameObject, (Transform sourceZone, float entryTime)> employeeEnterTimes = new Dictionary<GameObject, (Transform, float)>();
+        private const float TeleporterActivationRadius = 1.4f; // Meters
+        private const float TeleporterActivationRadiusSqr = TeleporterActivationRadius * TeleporterActivationRadius; // Use squared distance for efficiency
+        private const float TeleporterDwellTime = 2.0f; // Seconds
+        private Property currentManorPropertyRef = null; // Cache manor property reference in OnUpdate
+        // --- End Teleporter Fields ---
 
     public override void OnInitializeMelon()
     {
             LoggerInstance.Msg($"{BuildInfo.Name} v{BuildInfo.Version} Initializing...");
             LoadAssetBundleViaManager();
-            LogURPVersion(); // Keep URP version log - useful for compatibility info
 
             // Apply Harmony Patches (Keep error log)
             try
@@ -83,44 +103,8 @@ namespace ChloesManorMod
             {
                 LoggerInstance.Error($"Failed to apply Harmony patches: {e}");
             }
-            LoggerInstance.Msg("Chloe's Manor Mod Initialized!");
         }
 
-        // --- ADDED: Helper method to log URP version ---
-        private void LogURPVersion()
-        {
-            LoggerInstance.Msg("--- Checking URP Version ---"); // Shortened
-            Assembly urpAssembly = null;
-            string potentialAssemblyName1 = "Unity.RenderPipelines.Universal.Runtime";
-            string potentialAssemblyName2 = "UnityEngine.RenderPipelines.Universal.Runtime";
-
-            try
-            {
-                Assembly[] loadedAssemblies = System.AppDomain.CurrentDomain.GetAssemblies();
-                foreach (Assembly assembly in loadedAssemblies)
-                {
-                    string assemblyName = assembly.GetName().Name;
-                    if (string.Equals(assemblyName, potentialAssemblyName1, System.StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(assemblyName, potentialAssemblyName2, System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        urpAssembly = assembly;
-                        break;
-                    }
-                }
-
-                if (urpAssembly != null)
-                {
-                    System.Version version = urpAssembly.GetName().Version;
-                    LoggerInstance.Msg($"Detected URP Runtime Version: {version.Major}.{version.Minor}.{version.Build}");
-                }
-                else
-                {
-                    LoggerInstance.Warning("Could not find a loaded URP Runtime assembly. Unable to determine exact URP version.");
-                }
-            }
-            catch (System.Exception e) { LoggerInstance.Error($"Exception while checking URP version: {e}"); }
-            LoggerInstance.Msg("----------------------------"); // Shortened
-    }
 
     public override void OnSceneWasLoaded(int buildIndex, string sceneName)
     {
@@ -140,6 +124,9 @@ namespace ChloesManorMod
             // LoggerInstance.Msg("SetupAfterSceneLoad: Waiting one frame...");
             yield return null;
 
+            // --- Disable Original Objects --- 
+            DisableOriginalManorObjects();
+
             if (!dialogueModified)
             {
                 ModifyEstateAgentChoicesDirectly(); // Ensure this line exists and is NOT commented out
@@ -148,6 +135,49 @@ namespace ChloesManorMod
 
             LoadPrefabsFromIl2CppBundle();
             SpawnAndConfigurePrefab();
+
+            // --- Debug: Check for NavMeshLink after spawning --- 
+            MelonLogger.Msg("--- Checking for NavMeshLink on DoorLinkAttempt ---");
+            // Find the child object directly using transform.Find
+            GameObject doorLinkGO = null;
+            string relativePath = "AtTheProperty/Extra Navigation/DoorLinkAttempt";
+            if (spawnedInstanceRoot != null)
+            {
+                Transform doorLinkTransform = spawnedInstanceRoot.transform.Find(relativePath);
+                if (doorLinkTransform != null)
+                {
+                    doorLinkGO = doorLinkTransform.gameObject;
+                }
+            }
+
+            if (doorLinkGO != null) 
+            {
+                MelonLogger.Msg($"Found GameObject: '{doorLinkGO.name}' using relative path: '{relativePath}'");
+                NavMeshLink navLink = doorLinkGO.GetComponent<NavMeshLink>();
+                if (navLink != null)
+                {
+                    MelonLogger.Msg("  -> Found NavMeshLink component!");
+                    // Optional: Log specific properties if needed
+                    // MelonLogger.Msg($"     - StartPoint: {navLink.m_StartPoint}");
+                    // MelonLogger.Msg($"     - EndPoint: {navLink.m_EndPoint}");
+                    // MelonLogger.Msg($"     - AgentTypeID: {navLink.m_AgentTypeID}");
+                }
+                else 
+                {
+                     MelonLogger.Warning("  -> NavMeshLink component NOT FOUND on this GameObject!");
+                     MelonLogger.Warning("  -> Printing components!");
+                     foreach (Component component in doorLinkGO.GetComponents<Component>())
+                     {
+                        MelonLogger.Warning($"  -> {component.name}: {component.GetType().Name}");
+                     }
+                }
+            }
+            else 
+            {
+                MelonLogger.Error($"Could not find GameObject for NavMeshLink debug using relative path: '{relativePath}' within '{spawnedInstanceRoot?.name ?? "NULL"}'");
+            }
+            MelonLogger.Msg("--- Finished NavMeshLink Check ---");
+            // --- End Debug ---
         }
 
         private void LoadAssetBundleViaManager()
@@ -255,7 +285,20 @@ namespace ChloesManorMod
                 catch (System.Exception e) { LoggerInstance.Error($"Exception during Local Instantiate: {e}"); spawnedInstanceRoot = null; return; } // Keep error
             }
 
-            // Parenting and Configuration
+            // --- Ensure prefab is active before component restoration/setup ---
+            if (spawnedInstanceRoot == null) return; // Guard against null instance
+            spawnedInstanceRoot.SetActive(true);
+
+            // --- ADDED: Initialize Teleporter Pairs (replaces SetupTeleporterComponents) ---
+            InitializeTeleporterPairs(spawnedInstanceRoot);
+
+            // --- Restore Components (If using JSON method) ---
+            // ComponentRestorer.RestoreComponentsFromJSON(spawnedInstanceRoot, "path/to/your/component_data.json");
+
+            // --- Final Setup/Logging ---
+            // LoggerInstance.Msg($"Manor setup prefab '{spawnedInstanceRoot.name}' instantiated and configured."); // Can be noisy
+
+            // --- Parenting and Configuration ---
             if (spawnedInstanceRoot != null)
             {
                 // --- Load Hierarchy JSON ---
@@ -382,6 +425,12 @@ namespace ChloesManorMod
             spawnedInstanceRoot = null;
             spawnedNetworkObject = null;
             dialogueModified = false; // Reset dialogue flag if used
+
+            // --- Clear Teleporter Data ---
+            teleporterPairs.Clear();
+            employeeEnterTimes.Clear();
+            currentManorPropertyRef = null;
+            // --- End Clear ---
         }
 
         // Keep F-Key Teleport for debug builds / personal use
@@ -389,102 +438,21 @@ namespace ChloesManorMod
         {
             base.OnUpdate(); // Ensure base.OnUpdate is called if necessary
 
-            // --- F7 Teleport Debug ---
             if (Input.GetKeyDown(KeyCode.F7))
             {
-                MelonLogger.Msg("F7 pressed - Attempting to teleport to Manor Listing Poster...");
-
-                // Define the expected path *after* reparenting
-                string listingPath = "/Map/Container/RE Office/Interior/Whiteboard/PropertyListing Docks Manor";
-                GameObject listingObject = GameObject.Find(listingPath);
-
-                if (listingObject != null)
-                {
-                    MelonLogger.Msg($"Found listing object at '{listingPath}'. Attempting to find player...");
-
-                    // --- Find Player Transform (Prioritize Player Component) ---
-                    Transform playerTransformToMove = null;
-                    Player playerInstance = GameObject.FindObjectOfType<Player>(); // Using Il2CppScheduleOne.PlayerScripts.Player
-
-                    if (playerInstance != null)
-                    {
-                        playerTransformToMove = playerInstance.transform;
-                        MelonLogger.Msg($"Using Player component's transform ('{playerInstance.gameObject.name}') for teleport.");
-                    }
-                    // --- End Find Player Transform ---
-
-                    if (playerTransformToMove != null)
-                    {
-                        Vector3 targetPosition = listingObject.transform.position;
-                        MelonLogger.Msg($"Teleporting player object '{playerTransformToMove.name}' from {playerTransformToMove.position} to listing position {targetPosition}");
-
-                        // --- Attempt Teleport --- 
-                        // Directly setting position on the Player's root transform is more likely to work
-                        // than setting it on the camera if it's a child.
-                        playerTransformToMove.position = targetPosition;
-                        MelonLogger.Msg($"Player position set. Verify in-game movement.");
-                        
-                        // If this STILL doesn't work, the CharacterController might need temporary disabling or specific API calls.
-                        // Example (Conceptual - Needs CharacterController check):
-                        // CharacterController controller = playerTransformToMove.GetComponent<CharacterController>();
-                        // if (controller != null) {
-                        //     MelonLogger.Msg("Found CharacterController, attempting disable/enable method...");
-                        //     controller.enabled = false;
-                        //     playerTransformToMove.position = targetPosition;
-                        //     controller.enabled = true; 
-                        // }
-                    }
-                    else
-                    {
-                        MelonLogger.Warning("Could not find Player/Camera transform to teleport after all checks.");
-                    }
-                }
-                else
-                {
-                    MelonLogger.Warning($"Could not find listing object at path '{listingPath}'. Was it reparented correctly? Is the name exact?");
-                }
+                OnDebugKey();
             }
-            // --- End F7 Teleport Debug ---
 
-            CheckForDecalDebugInput(); // Call the new debug method
+            // --- Centralized Teleporter Logic --- 
+            ProcessTeleporters();
+            // --- End Teleporter Logic ---
         }
-
-        // --- NEW DEBUG METHOD ---
-        private void CheckForDecalDebugInput()
+        
+        void OnDebugKey()
         {
-            if (Input.GetKeyDown(KeyCode.L))
-            {
-                LoggerInstance.Msg("'L' key pressed, searching for LoadingDock DecalProjector...");
-                DecalProjector[] allDecals = GameObject.FindObjectsOfType<DecalProjector>();
-                bool found = false;
-                foreach (DecalProjector decal in allDecals)
-                {
-                    // Simple check - might need refinement based on actual hierarchy/naming
-                    if (decal.gameObject.name.IndexOf("LoadingDock", System.StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        Vector3 size = decal.size;
-                        LoggerInstance.Msg($"Found LoadingDock Decal: '{decal.gameObject.name}'. Size: (Width={size.x}, Height={size.y}, Depth={size.z})");
-                        found = true;
-                        break; // Found one, stop searching
-                    }
-                }
-                if (!found)
-                {
-                    LoggerInstance.Msg("No DecalProjector found on a GameObject with 'LoadingDock' in its name.");
-                }
-            }
+            MelonLogger.Msg("F7 ManorMod debug key pressed.");
+            // run some debug handler here
         }
-        // --- END NEW DEBUG METHOD ---
-
-        // Keep dialogue modification methods/logs if that feature is still intended
-        //ModifyEstateAgentChoicesDirectly();
-        // FindAndLogEstateAgentEvent()
-
-        // Remove testing methods if no longer needed
-        // TeleportToTestCube()
-        // FindDeepChild() // Keep if used by non-test methods
-        // LogInstanceDebugInfo()
-        // LogManorGateMaterials()
 
         private void ModifyEstateAgentChoicesDirectly()
         {
@@ -673,5 +641,209 @@ namespace ChloesManorMod
             }
         } // End ModifyEstateAgentChoicesDirectly
 
+        // --- Method to disable specific GameObjects by path --- 
+        private void DisableOriginalManorObjects()
+        {
+            MelonLogger.Msg("--- Disabling Original Manor Objects ---");
+            foreach (string path in objectsToDisableBeforeSetup)
+            {
+                GameObject objToDisable = GameObject.Find(path);
+                if (objToDisable != null)
+                {   
+                    MelonLogger.Msg($"    - Found and disabling: '{path}'");
+                    objToDisable.SetActive(false);
+                }
+                else 
+                { 
+                     MelonLogger.Warning($"    - Could not find object to disable at path: '{path}'");
+                }
+            }
+            MelonLogger.Msg("--- Finished Disabling Objects ---");
+        }
+
+        // --- Renamed/Modified Helper: Finds teleporter pairs and stores them ---
+        private void InitializeTeleporterPairs(GameObject root)
+        {
+            if (root == null)
+            {
+                LoggerInstance.Error("InitializeTeleporterPairs: Cannot initialize teleporters, root object is null.");
+                return;
+            }
+
+            LoggerInstance.Msg("--- Initializing Teleporter Pairs ---");
+            teleporterPairs.Clear(); // Clear any old pairs first
+
+            // Define the relative paths from the root to the teleporter GameObjects
+            // IMPORTANT: Adjust these paths if the hierarchy in your prefab is different!
+            string[] teleporterPaths = {
+                "AtTheProperty/Extra Navigation/TempTeleporter1",
+                "AtTheProperty/Extra Navigation/TempTeleporter2",
+                "AtTheProperty/Extra Navigation/TempTeleporter3",
+                "AtTheProperty/Extra Navigation/TempTeleporter4"
+            };
+
+            foreach (string path in teleporterPaths)
+            {
+                Transform teleporterGroupTransform = root.transform.Find(path);
+                if (teleporterGroupTransform != null)
+                {
+                    // Find the child position transforms WITHIN the group
+                    Transform pos1Transform = teleporterGroupTransform.Find("Pos1");
+                    Transform pos2Transform = teleporterGroupTransform.Find("Pos2");
+
+                    if (pos1Transform != null && pos2Transform != null)
+                    {
+                        // Store the pair
+                        teleporterPairs.Add((pos1Transform, pos2Transform));
+                        LoggerInstance.Msg($"  Added teleporter pair: Source='{pos1Transform.name}' -> Target='{pos2Transform.name}' (Parent Group: {path})");
+                    }
+                    else
+                    {
+                        LoggerInstance.Warning($"  Could not find 'Pos1' ({pos1Transform == null}) or 'Pos2' ({pos2Transform == null}) child Transforms under group '{path}'. Skipping this pair.");
+                    }
+                }
+                else
+                {
+                    LoggerInstance.Warning($"  Could not find teleporter group Transform at path: '{path}'. Skipping.");
+                }
+            }
+            LoggerInstance.Msg($"--- Finished Initializing Teleporter Pairs. Found {teleporterPairs.Count} pairs. ---");
+        }
+
+        // --- NEW: Centralized Teleporter Processing Logic ---
+        private void ProcessTeleporters()
+        {
+            // Only process if teleporters have been initialized
+            if (teleporterPairs.Count == 0) return;
+
+            // Update manor property reference if null
+            if (currentManorPropertyRef == null)
+                currentManorPropertyRef = FindManor();
+
+            // Early exit if manor or employees list is invalid
+            if (currentManorPropertyRef == null || currentManorPropertyRef.Employees == null) return;
+
+            // Get a stable reference to the employees list for this frame
+            var employees = currentManorPropertyRef.Employees;
+            if (employees.Count == 0) return; // No employees to check
+
+            // Create a list of employees to untrack if they are no longer valid or in any zone
+            List<GameObject> employeesToRemove = null; // Lazy initialization
+
+            // --- Check currently tracked employees first for exits or warps ---
+            foreach (var kvp in employeeEnterTimes)
+            {
+                GameObject employeeGO = kvp.Key;
+                Transform trackedSourceZone = kvp.Value.sourceZone;
+                float entryTime = kvp.Value.entryTime;
+
+                // Validate employee still exists and is active
+                if (employeeGO == null || !employeeGO.activeInHierarchy)
+                {
+                    if (employeesToRemove == null) employeesToRemove = new List<GameObject>();
+                    employeesToRemove.Add(employeeGO);
+                    continue;
+                }
+
+                // Check distance to the specific zone they were tracked entering
+                float sqrDistToTrackedZone = (employeeGO.transform.position - trackedSourceZone.position).sqrMagnitude;
+
+                if (sqrDistToTrackedZone >= TeleporterActivationRadiusSqr)
+                {
+                    // Exited the zone they were in
+                    if (employeesToRemove == null) employeesToRemove = new List<GameObject>();
+                    employeesToRemove.Add(employeeGO);
+                    // MelonLogger.Msg($"Teleporter: Employee '{employeeGO.name}' exited zone '{trackedSourceZone.name}'. Untracking."); // Optional Log
+                }
+                else
+                {
+                    // Still in the zone, check dwell time
+                    if (Time.time - entryTime >= TeleporterDwellTime)
+                    {
+                        // Find the corresponding target for this source zone
+                        Transform targetTransform = null;
+                        foreach (var pair in teleporterPairs)
+                        {
+                            if (pair.source == trackedSourceZone)
+                            {
+                                targetTransform = pair.target;
+                                break;
+                            }
+                        }
+
+                        if (targetTransform != null)
+                        {
+                            NavMeshAgent agent = employeeGO.GetComponent<NavMeshAgent>();
+                            if (agent != null)
+                            {
+                                // Calculate Y-Offset
+                                Vector3 currentNpcPosition = employeeGO.transform.position;
+                                Vector3 sourceTriggerPosition = trackedSourceZone.position;
+                                Vector3 baseTargetPosition = targetTransform.position;
+                                float yOffset = currentNpcPosition.y - sourceTriggerPosition.y;
+                                Vector3 finalTargetPosition = new Vector3(baseTargetPosition.x, baseTargetPosition.y + yOffset, baseTargetPosition.z);
+
+                                // MelonLogger.Msg($"Teleporter: Warping '{employeeGO.name}' from '{trackedSourceZone.name}' to '{targetTransform.name}' (Y-Offset: {yOffset:F2})."); // Optional Log
+                                agent.Warp(finalTargetPosition);
+
+                                // Remove immediately after warp
+                                if (employeesToRemove == null) employeesToRemove = new List<GameObject>();
+                                employeesToRemove.Add(employeeGO);
+                            }
+                            else
+                            {
+                                // MelonLogger.Warning($"Teleporter: Employee '{employeeGO.name}' in zone '{trackedSourceZone.name}' has no NavMeshAgent. Untracking."); // Optional Log
+                                if (employeesToRemove == null) employeesToRemove = new List<GameObject>();
+                                employeesToRemove.Add(employeeGO);
+                            }
+                        }
+                        else
+                        {
+                            // Should not happen if initialized correctly, but handle defensively
+                            // MelonLogger.Warning($"Teleporter: Could not find target pair for source zone '{trackedSourceZone.name}'. Untracking employee '{employeeGO.name}'."); // Optional Log
+                            if (employeesToRemove == null) employeesToRemove = new List<GameObject>();
+                            employeesToRemove.Add(employeeGO);
+                        }
+                    }
+                    // Else: Still in zone, but dwell time not met - do nothing
+                }
+            }
+
+            // --- Remove untracked employees ---
+            if (employeesToRemove != null)
+            {
+                foreach (GameObject empToRemove in employeesToRemove)
+                    employeeEnterTimes.Remove(empToRemove);
+            }
+
+            // --- Check for new entries --- 
+            // Convert Il2Cpp List to something iterable if needed, or use index
+            for (int i = 0; i < employees.Count; i++)
+            {
+                Il2CppScheduleOne.Employees.Employee employee = employees[i];
+                if (employee == null) continue; // Skip null employee entries
+                GameObject employeeGO = employee.gameObject;
+                if (employeeGO == null || !employeeGO.activeInHierarchy) continue; // Skip inactive/null GO
+
+                // Skip if already tracked (means they are currently in a zone or just warped)
+                if (employeeEnterTimes.ContainsKey(employeeGO)) continue;
+
+                // Check proximity to each teleporter source
+                foreach (var pair in teleporterPairs)
+                {
+                    Transform source = pair.source;
+                    float sqrDist = (employeeGO.transform.position - source.position).sqrMagnitude;
+
+                    if (sqrDist < TeleporterActivationRadiusSqr)
+                    {
+                        // Entered this zone, start tracking
+                        employeeEnterTimes.Add(employeeGO, (source, Time.time));
+                        // MelonLogger.Msg($"Teleporter: Employee '{employeeGO.name}' entered zone '{source.name}'. Tracking."); // Optional Log
+                        break; // Employee entered one zone, no need to check others for them this frame
+                    }
+                }
+            }
+        }
+        // --- END NEW LOGIC ---
     } // End partial class MainMod
 } // End namespace

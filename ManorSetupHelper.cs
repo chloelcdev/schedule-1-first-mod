@@ -457,8 +457,8 @@ namespace ChloesManorMod
             var combinedIdlePoints = manorProperty.EmployeeIdlePoints.ToList();
 
             // 3. Add the transforms of the CHILDREN of the extra points container
-            foreach (Transform child in extraPointsContainer)
-                combinedIdlePoints.Add(child);
+            for (int i = 0; i < extraPointsContainer.childCount; i++)
+                combinedIdlePoints.Add(extraPointsContainer.GetChild(i));
 
             MelonLogger.Msg($"Added {extraPointsContainer.childCount} extra idle point transforms from '{ExtraIdlePointsContainerName}'.");
 

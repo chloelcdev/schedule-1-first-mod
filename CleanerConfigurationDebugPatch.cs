@@ -10,7 +10,7 @@ using System.Text; // For StringBuilder
 // Existing using statements for CleanerTaskDebugPatch can remain if in the same file
 
 namespace ChloesManorMod // Use your mod's namespace
-{
+{/*
     // Patching CleanerConfiguration now
     [HarmonyPatch(typeof(CleanerConfiguration))]
     internal static class CleanerConfigurationDebugPatch
@@ -67,6 +67,7 @@ namespace ChloesManorMod // Use your mod's namespace
             }
         }
     }
+    */
 }
 
 // --- You can keep the CleanerTaskDebugPatch class in the same file or separate it --- 
