@@ -70,10 +70,6 @@ namespace ChloesManorMod
             if (manorGrid != null) { }
             else { MelonLogger.Error($"   !!! FAILED to find Grid component within spawned instance '{spawnedInstanceRoot.name}'! Building may fail."); }
 
-            // --- Find Template Projector ---
-            GameObject templateProjectorGO = FindTemplateProjector();
-            if (templateProjectorGO == null) { MelonLogger.Warning("Could not find template 'Projector' from Bungalow. Projectors will not be added."); }
-
             // --- Find Template Save Point Materials ---
             Material[] templateSavePointMaterials = FindTemplateSavePointMaterials();
             // --- End Find Template Materials ---
@@ -89,21 +85,6 @@ namespace ChloesManorMod
                 existingDockComp.ParentProperty = manorProperty;
 
                 if (!docksToAdd.Contains(existingDockComp)) { docksToAdd.Add(existingDockComp); }
-
-                // Copy Projector
-                if (templateProjectorGO != null)
-                {
-                    try
-                    {
-                        GameObject projectorCopy = GameObject.Instantiate(templateProjectorGO);
-                        projectorCopy.name = "Projector (Copied)";
-                        projectorCopy.transform.SetParent(existingDockComp.transform, false);
-                        projectorCopy.transform.localPosition = templateProjectorGO.transform.localPosition;
-                        projectorCopy.transform.localRotation = templateProjectorGO.transform.localRotation;
-                        projectorCopy.transform.SetSiblingIndex(0);
-                    }
-                    catch(System.Exception e) { MelonLogger.Error($"   Failed to copy Projector for dock '{existingDockComp.gameObject.name}': {e.Message}"); }
-                }
             }
 
             // --- Update Manor Property's LoadingDocks Array ---
@@ -205,51 +186,6 @@ namespace ChloesManorMod
             MelonLogger.Msg($"--- ManorSetupHelper configuration FINISHED ---");
 
         } // End ConfigureManorSetup
-
-        // --- ADDED: Helper to find the template projector ---
-        private static GameObject FindTemplateProjector()
-        {
-            MelonLogger.Msg($"--- Finding Template Projector from Bungalow ---");
-            PropertyManager propManager = PropertyManager.Instance;
-            if (propManager == null)
-            {
-                MelonLogger.Error("PropertyManager instance not found!");
-                return null;
-            }
-
-            Property bungalowProp = propManager.GetProperty(BungalowPropertyCode);
-            if (bungalowProp == null)
-            {
-                MelonLogger.Error($"Could not find Bungalow property (Code: '{BungalowPropertyCode}')!");
-                return null;
-            }
-             MelonLogger.Msg($"Found Bungalow property: '{bungalowProp.PropertyName}'");
-
-
-             if (bungalowProp.LoadingDocks == null || bungalowProp.LoadingDocks.Length == 0)
-             {
-                 MelonLogger.Error("Bungalow property has no LoadingDocks in its array!");
-                 return null;
-             }
-
-            LoadingDock templateDock = bungalowProp.LoadingDocks[0];
-             if (templateDock == null)
-             {
-                 MelonLogger.Error("Bungalow's LoadingDock at index 0 is null!");
-                 return null;
-             }
-             MelonLogger.Msg($"Found template LoadingDock: '{templateDock.gameObject.name}'");
-
-
-             Transform projectorTransform = templateDock.transform.Find("Projector");
-              if (projectorTransform == null)
-             {
-                 MelonLogger.Error("Could not find child GameObject named 'Projector' under the template LoadingDock!");
-                 return null;
-             }
-
-             return projectorTransform.gameObject; // Return the GameObject
-        }
 
         // --- MODIFIED: Helper to find template Save Point materials WITH SHADER LOGGING ---
         private static Material[] FindTemplateSavePointMaterials()

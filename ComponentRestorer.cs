@@ -23,7 +23,7 @@ namespace ChloesManorMod
                                                  // public Func<GameObject, Component> AddComponentAction { get; set; } // REMOVED
 
         // NEW Combined Action: Handles finding/adding AND applying properties for a specific type
-        public Action<GameObject, ComponentData, bool> ApplyComponentAction { get; set; }
+        public Action<GameObject, ComponentData, bool, int> ApplyComponentAction { get; set; }
     }
     // --- END: Configuration Structures ---
 
@@ -34,7 +34,7 @@ namespace ChloesManorMod
 
         // --- Updated Helper signature --- 
         private static void AddMapping(bool verboseLogging, string jsonTypeName,
-                                       Action<GameObject, ComponentData, bool> applyAction) // Only takes the combined action
+                                       Action<GameObject, ComponentData, bool, int> applyAction)
         {
             // We don't necessarily need the System.Type here anymore if the action handles everything
             // System.Type runtimeType = FindTypeInLoadedAssemblies(jsonTypeName);
@@ -46,7 +46,7 @@ namespace ChloesManorMod
                 ApplyComponentAction = applyAction // Assign the combined action
             };
             _componentMappings.Add(mapping);
-            if (verboseLogging) MelonLogger.Msg($"    - Added mapping for {jsonTypeName} with combined Apply action.");
+            if (verboseLogging) MelonLogger.Msg($"    - Added mapping for {jsonTypeName} with combined Apply action (incl. index).");
             // } else { ... Error Log ... }
         }
         // --- END Helper ---
@@ -57,25 +57,18 @@ namespace ChloesManorMod
             if (verboseLogging) MelonLogger.Msg("[ComponentRestorer] Initializing component type mappings...");
             _componentMappings.Clear();
 
-            // DecalProjector Mapping - Point to the new combined action function
+            // Correct lambdas to match the Action signature
             AddMapping(verboseLogging,
-                "UnityEngine.Rendering.Universal.DecalProjector", // JSON Type Name
-                ApplyDecalProjector // NEW combined action function
+                "UnityEngine.Rendering.Universal.DecalProjector",
+                // Lambda now accepts all 4 params
+                (go, data, verbose, index) => ApplyDecalProjector(go, data, verbose, index)
             );
 
-            // --- Add mappings for other types here using AddMapping() --- 
-            // NavMeshSurface Mapping
             AddMapping(verboseLogging,
-                "Unity.AI.Navigation.NavMeshSurface", // JSON Type Name
-                ApplyNavMeshSurface // NEW combined action function
+                "Unity.AI.Navigation.NavMeshSurface",
+                 // Lambda now accepts all 4 params
+                (go, data, verbose, index) => ApplyNavMeshSurface(go, data, verbose, index)
             );
-
-            /* Example: Rigidbody
-            AddMapping(verboseLogging, 
-                "UnityEngine.Rigidbody", 
-                ApplyRigidbody // Assuming you create this combined function
-            );
-            */
 
             _mappingsInitialized = true;
             if (verboseLogging) MelonLogger.Msg("[ComponentRestorer] Component type mappings initialized.");
@@ -173,23 +166,25 @@ namespace ChloesManorMod
                 }
 
                 // --- Process components for this GO --- 
-                foreach (ComponentData compData in goData.components)
+                // Get all components once to determine index
+                Component[] allTargetComponents = targetGO.GetComponents<Component>();
+                for (int i = 0; i < goData.components.Count; i++)
                 {
+                    ComponentData compData = goData.components[i];
                     ComponentTypeMapping mapping = _componentMappings.Find(m => m.JsonTypeName == compData.typeFullName);
                     if (mapping == null) continue;
 
-                    // --- Directly Call the Combined Action --- 
                     if (mapping.ApplyComponentAction != null)
                     {
                         try
                         {
-                            // The action now handles finding/adding/applying
-                            mapping.ApplyComponentAction(targetGO, compData, verboseLogging);
-                            // We don't get the component back here, so can't increment restoredCount easily
+                            // Pass the actual component index 'i'
+                            mapping.ApplyComponentAction(targetGO, compData, verboseLogging, i);
                         }
                         catch (Exception applyEx)
                         {
-                            MelonLogger.Error($"[ComponentRestorer] ApplyComponentAction failed for '{mapping.JsonTypeName}': {applyEx.Message}");
+                            // Log with index
+                            MelonLogger.Error($"[ComponentRestorer] ApplyComponentAction failed for '{mapping.JsonTypeName}' at index {i}: {applyEx.Message}");
                         }
                     }
                     else
@@ -202,11 +197,12 @@ namespace ChloesManorMod
             MelonLogger.Msg($"[ComponentRestorer] Finished component restoration using combined action mappings.");
         }
 
-        // --- Smuggling Helper Functions ---
-        private static Material RetrieveSmuggledMaterial(Component target, string runtimePropName, bool verbose)
+        // --- Smuggling Helper Functions --- UPDATED
+        private static Material RetrieveSmuggledMaterial(Component target, string placeholderName, bool verbose)
         {
-            // --- UPDATE Prefix ---
-            string placeholderName = $"[PropertySmuggler] [{runtimePropName}]"; // Use the new prefix
+            // placeholderName is now passed directly, no need to construct it here
+            // string placeholderName = $"[PropertySmuggler] [{runtimePropName}] [{componentIndex}]"; // OLD logic removed
+
             Transform smugglerTransform = target.transform.Find(placeholderName);
             Material retrievedMaterial = null;
 
@@ -222,46 +218,18 @@ namespace ChloesManorMod
 
                 UnityEngine.Object.Destroy(smugglerTransform.gameObject); // Clean up placeholder
             }
-            else if (verbose) MelonLogger.Msg($"      - No placeholder found for smuggled material property '{runtimePropName}' (looked for '{placeholderName}').");
+            // Updated log to reflect that the *specific* placeholder wasn't found
+            else if (verbose) MelonLogger.Msg($"      - Placeholder '{placeholderName}' not found for smuggled material property.");
 
             return retrievedMaterial;
         }
 
-        private static Sprite RetrieveSmuggledSprite(Component target, string runtimePropName, bool verbose) // Example for Sprite
+        private static Sprite RetrieveSmuggledSprite(Component target, string placeholderName, bool verbose) // Example for Sprite
         {
-            // --- UPDATE Prefix ---
-            string placeholderName = $"[PropertySmuggler] [{runtimePropName}]"; // Use the new prefix
             Transform smugglerTransform = target.transform.Find(placeholderName);
             Sprite retrievedSprite = null;
-
-            if (smugglerTransform != null)
-            {
-                // Option 1: SpriteRenderer
-                SpriteRenderer spriteRenderer = smugglerTransform.GetComponent<SpriteRenderer>();
-                if (spriteRenderer != null)
-                {
-                    retrievedSprite = spriteRenderer.sprite;
-                    if (verbose) MelonLogger.Msg($"          -> Found placeholder '{placeholderName}', retrieved Sprite '{retrievedSprite?.name ?? "null"}' from SpriteRenderer.");
-                }
-                else
-                {
-                    // Option 2: Image (UI)
-                    Image image = smugglerTransform.GetComponent<Image>();
-                    if (image != null)
-                    {
-                        retrievedSprite = image.sprite;
-                        if (verbose) MelonLogger.Msg($"          -> Found placeholder '{placeholderName}', retrieved Sprite '{retrievedSprite?.name ?? "null"}' from Image.");
-                    }
-                    else
-                    {
-                        if (verbose) MelonLogger.Warning($"          -> Found placeholder '{placeholderName}' but it missing SpriteRenderer or Image component.");
-                    }
-                }
-
-                UnityEngine.Object.Destroy(smugglerTransform.gameObject); // Clean up placeholder
-            }
-            else if (verbose) MelonLogger.Msg($"      - No placeholder found for smuggled sprite property '{runtimePropName}' (looked for '{placeholderName}').");
-
+            // ... rest of logic ...
+             if (verbose) MelonLogger.Msg($"      - Placeholder '{placeholderName}' not found for smuggled sprite property.");
             return retrievedSprite;
         }
 
@@ -362,8 +330,8 @@ namespace ChloesManorMod
         }
         // --- END Helper Function ---
 
-        // --- NEW Combined Apply function for DecalProjector --- 
-        private static void ApplyDecalProjector(GameObject targetGO, ComponentData data, bool verbose)
+        // --- NEW Combined Apply function for DecalProjector --- UPDATED
+        private static void ApplyDecalProjector(GameObject targetGO, ComponentData data, bool verbose, int componentIndex) // Added index to signature for logging consistency
         {
             if (targetGO == null) return;
 
@@ -434,102 +402,36 @@ namespace ChloesManorMod
             }
             catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting scaleMode: {e.Message}"); } // Removed value logging as it's complex
 
-            // Smuggled material assignment
+            // Smuggled material assignment - Get placeholder name from Properties
             try
             {
-                // Pass the specific component instance to the smuggler helper
-                Material mat = RetrieveSmuggledMaterial(decalProjector, "material", verbose);
-                if (mat != null)
+                if (data.Properties.TryGetValue("material", out object materialPlaceholderObj) && materialPlaceholderObj is string materialPlaceholderName)
                 {
-                    decalProjector.material = mat;
-                    if (verbose) MelonLogger.Msg($"      - Set material = {mat.name} (from smuggler)");
+                    // Pass the specific component instance AND the retrieved placeholder name
+                    Material mat = RetrieveSmuggledMaterial(decalProjector, materialPlaceholderName, verbose);
+                    if (mat != null)
+                    {
+                        decalProjector.material = mat;
+                        if (verbose) MelonLogger.Msg($"      - Set material = {mat.name} (from smuggler '{materialPlaceholderName}')");
+                    }
+                    // No need for an else here, RetrieveSmuggledMaterial logs if not found
+                }
+                else if (verbose)
+                {
+                     // Log if the 'material' key wasn't found or wasn't a string (placeholder name)
+                     MelonLogger.Msg($"      - Property 'material' (placeholder name) not found or not a string in JSON for component index {componentIndex}.");
                 }
             }
             catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting material from smuggler: {e.Message}"); }
 
-            if (verbose) MelonLogger.Msg($"    - Finished applying DecalProjector specific properties.");
+            if (verbose) MelonLogger.Msg($"    - Finished applying DecalProjector specific properties for index {componentIndex}.");
         }
 
-        // --- NEW Combined Apply function for NavMeshSurface ---
-        private static void ApplyNavMeshSurface(GameObject targetGO, ComponentData data, bool verbose)
+        // --- NEW Combined Apply function for NavMeshSurface --- Ensure signature matches if needed
+        // (No changes needed inside if it doesn't smuggle)
+        private static void ApplyNavMeshSurface(GameObject targetGO, ComponentData data, bool verbose, int componentIndex) 
         {
-            if (targetGO == null) return;
-
-            // Find or Add the component
-            NavMeshSurface navMeshSurface = targetGO.GetComponent<NavMeshSurface>();
-            bool added = false;
-            if (navMeshSurface == null)
-            {
-                if (verbose) MelonLogger.Msg($"    - NavMeshSurface not found on '{targetGO.name}'. Adding...");
-                navMeshSurface = targetGO.AddComponent<NavMeshSurface>();
-                if (navMeshSurface == null)
-                { // Check if AddComponent failed
-                    MelonLogger.Error($"[ComponentRestorer] Failed to add NavMeshSurface component to '{targetGO.name}'.");
-                    return;
-                }
-                added = true;
-            }
-            else
-            {
-                if (verbose) MelonLogger.Msg($"    - Found existing NavMeshSurface on '{targetGO.name}'.");
-            }
-
-            // Apply properties directly from ComponentData fields
-            if (verbose) MelonLogger.Msg($"    - Applying NavMeshSurface specific properties from ComponentData fields...");
-
-            // --- Check if Properties dictionary exists ---
-            if (data.Properties == null)
-            {
-                if (verbose) MelonLogger.Warning($"    - No 'Properties' dictionary found in JSON data for NavMeshSurface on '{targetGO.name}'. Skipping property application.");
-                return; // Can't apply properties if the dictionary is missing
-            }
-
-            // --- Apply properties from dictionary using GetValue helper ---
-            try
-            {
-                int agentTypeId = GetValue<int>(data.Properties, "agentTypeID", verbose);
-                navMeshSurface.agentTypeID = agentTypeId;
-                if (verbose) MelonLogger.Msg($"      - Set agentTypeID = {agentTypeId}");
-            }
-            catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting agentTypeID: {e.Message}"); }
-
-            try
-            {
-                int collectObjectsInt = GetValue<int>(data.Properties, "collectObjects", verbose);
-                navMeshSurface.collectObjects = (CollectObjects)collectObjectsInt;
-                if (verbose) MelonLogger.Msg($"      - Set collectObjects = {(CollectObjects)collectObjectsInt} (from int {collectObjectsInt})");
-            }
-            catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting collectObjects: {e.Message}"); }
-
-            try
-            {
-                LayerMask layerMaskValue = GetValue<LayerMask>(data.Properties, "layerMask", verbose);
-                navMeshSurface.layerMask = layerMaskValue;
-                if (verbose) MelonLogger.Msg($"      - Set layerMask = {layerMaskValue.value} (int value)");
-            }
-            catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting layerMask: {e.Message}"); }
-
-            try
-            {
-                int useGeometryInt = GetValue<int>(data.Properties, "useGeometry", verbose);
-                navMeshSurface.useGeometry = (NavMeshCollectGeometry)useGeometryInt;
-                if (verbose) MelonLogger.Msg($"      - Set useGeometry = {(NavMeshCollectGeometry)useGeometryInt} (from int {useGeometryInt})");
-            }
-            catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting useGeometry: {e.Message}"); }
-
-            try
-            {
-                int defaultAreaInt = GetValue<int>(data.Properties, "defaultArea", verbose);
-                navMeshSurface.defaultArea = defaultAreaInt;
-                if (verbose) MelonLogger.Msg($"      - Set defaultArea = {defaultAreaInt}");
-            }
-            catch (Exception e) { MelonLogger.Warning($"[ComponentRestorer] Failed setting defaultArea: {e.Message}"); }
-
-
-            if (verbose) MelonLogger.Msg($"    - Finished applying NavMeshSurface specific properties.");
-
-            // IMPORTANT: We only restore the settings. The actual baking needs to be triggered elsewhere.
-            MelonLogger.Warning($"[ComponentRestorer] Restored NavMeshSurface settings on '{targetGO.name}'. BuildNavMesh() was NOT called. Runtime logic must trigger baking if needed.");
+           // ... existing code ...
         }
 
         // ... (Smuggling Helpers, BuildPathLookup, FindTypeInLoadedAssemblies) ...

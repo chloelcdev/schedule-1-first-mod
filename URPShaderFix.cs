@@ -146,81 +146,55 @@ namespace ChloesManorMod
             }
 
             // --- 2. Process Decal Projectors ---
-            string decalTypeName = "UnityEngine.Rendering.Universal.DecalProjector";
-            System.Type decalSysType = FindTypeInLoadedAssemblies(decalTypeName); // System.Type for checks
-
-            if (decalSysType != null)
+            if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Processing DecalProjectors under '{rootObject.name}'...");
+            try // Add a try-catch around the whole Decal processing block
             {
-                Il2CppSystem.Type decalIl2CppType = Il2CppType.From(decalSysType); // Il2Cpp Type for GetComponent
-                if (decalIl2CppType == null)
+                // --- Use Generic GetComponentsInChildren --- 
+                UnityEngine.Rendering.Universal.DecalProjector[] decalComponents = 
+                    rootObject.GetComponentsInChildren<UnityEngine.Rendering.Universal.DecalProjector>(true);
+
+                if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Found {decalComponents.Length} DecalProjectors using generic GetComponentsInChildren.");
+
+                foreach (UnityEngine.Rendering.Universal.DecalProjector decalProjectorInstance in decalComponents)
                 {
-                    MelonLogger.Error($"[URPShaderFix] Failed to convert DecalProjector System.Type '{decalSysType.FullName}' to Il2CppSystem.Type! Skipping decal fix.");
-                }
-                else
-                {
-                    Component[] decalComponents = rootObject.GetComponentsInChildren(decalIl2CppType, true);
-                    if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Found {decalComponents.Length} DecalProjectors under '{rootObject.name}'.");
+                    if (decalProjectorInstance == null) continue;
 
-                    // Remove reflection for material property
-                    // PropertyInfo materialProp = decalSysType.GetProperty("material", BindingFlags.Instance | BindingFlags.Public); 
-                    // if (materialProp == null || !materialProp.CanRead || !materialProp.CanWrite)
-                    // {
-                    //    MelonLogger.Error("[URPShaderFix] Could not find readable/writable 'material' property on DecalProjector type. Cannot fix decal materials.");
-                    // }
-                    // else
-                    // {
-                    foreach (Component decalComponent in decalComponents) // Renamed variable
-                    {
-                        if (decalComponent == null) continue;
-
-                        // --- Add Debug Log to check the type BEFORE casting --- 
-                        if (verboseLogging)
-                        {
-                            MelonLogger.Msg($"    - Checking component on '{decalComponent.gameObject.name}'. Found Type: {decalComponent.GetType().FullName}");
-                        }
-
-                        UnityEngine.Rendering.Universal.DecalProjector decalProjectorInstance =
-                            decalComponent as UnityEngine.Rendering.Universal.DecalProjector;
-
-                        if (decalProjectorInstance == null)
-                        {
-                            MelonLogger.Warning($"[URPShaderFix] Failed to cast Component (Type: {decalComponent.GetType().FullName}) on '{decalComponent.gameObject.name}' to DecalProjector using 'as'. Skipping material fix for this component.");
-                            continue;
-                        }
-
-                        Material currentDecalMat = null;
-                        try { currentDecalMat = decalProjectorInstance.material; }
-                        catch (System.Exception ex) { MelonLogger.Warning($"[URPShaderFix] Error getting material directly from DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); continue; }
-
-                        // --- Log Material and Shader Name BEFORE processing --- 
-                        if (verboseLogging)
-                        {
-                            string matName = currentDecalMat?.name ?? "NULL Material";
-                            string shaderName = currentDecalMat?.shader?.name ?? "NULL Shader";
-                            MelonLogger.Msg($"    -> Processing Decal '{decalProjectorInstance.gameObject.name}': Material='{matName}', Shader='{shaderName}'");
-                        }
-                        // --- 
-
-                        Material originalMatInstance = currentDecalMat;
-
-                        // Process the material (passing the reference)
-                        if (ProcessMaterialFix(ref currentDecalMat, targetShaderCache, decalProjectorInstance.gameObject, -1, verboseLogging)) // Use -1 for index as it's not an array
-                        {
-                            totalDecalsFixed++;
-                            if (currentDecalMat != originalMatInstance) { /* ... Log ... */ if (verboseLogging) MelonLogger.Msg($"   - Reassigning modified material instance to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
-                            else { /* ... Log ... */ if (verboseLogging) MelonLogger.Msg($"   - Reassigning (potentially modified in-place) material to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
-
-                            try { decalProjectorInstance.material = currentDecalMat; }
-                            catch (System.Exception ex) { MelonLogger.Error($"[URPShaderFix] Error setting material directly onto DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); }
-                        }
+                    Material currentDecalMat = null;
+                    try { currentDecalMat = decalProjectorInstance.material; }
+                    catch (System.Exception ex) 
+                    { 
+                        MelonLogger.Warning($"[URPShaderFix] Error getting material directly from DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); 
+                        continue; // Skip this decal if we can't get its material
                     }
-                    // }
+
+                    // --- Log Material and Shader Name BEFORE processing --- 
+                    if (verboseLogging)
+                    {
+                        string matName = currentDecalMat?.name ?? "NULL Material";
+                        string shaderName = currentDecalMat?.shader?.name ?? "NULL Shader";
+                        MelonLogger.Msg($"    -> Processing Decal '{decalProjectorInstance.gameObject.name}': Material='{matName}', Shader='{shaderName}'");
+                    }
+                    // --- 
+
+                    Material originalMatInstance = currentDecalMat;
+
+                    // Process the material (passing the reference)
+                    if (ProcessMaterialFix(ref currentDecalMat, targetShaderCache, decalProjectorInstance.gameObject, -1, verboseLogging)) // Use -1 for index as it's not an array
+                    {
+                        totalDecalsFixed++;
+                        if (currentDecalMat != originalMatInstance) { if (verboseLogging) MelonLogger.Msg($"   - Reassigning modified material instance to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
+                        else { if (verboseLogging) MelonLogger.Msg($"   - Reassigning (potentially modified in-place) material to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
+
+                        try { decalProjectorInstance.material = currentDecalMat; }
+                        catch (System.Exception ex) { MelonLogger.Error($"[URPShaderFix] Error setting material directly onto DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); }
+                    }
                 }
             }
-            else if (verboseLogging)
+            catch (System.Exception decalEx)
             {
-                MelonLogger.Warning($"[URPShaderFix] Could not find DecalProjector type '{decalTypeName}'. Skipping decal material check.");
+                 MelonLogger.Error($"[URPShaderFix] Unhandled exception during DecalProjector processing loop: {decalEx.ToString()}");
             }
+            // --- End Decal Processing ---
 
             // --- 3. Final Report ---
             int totalFixed = totalRenderersFixed + totalDecalsFixed;
