@@ -46,7 +46,7 @@ namespace ChloesManorMod
                 ApplyComponentAction = applyAction // Assign the combined action
             };
             _componentMappings.Add(mapping);
-            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: Added mapping for {jsonTypeName} with combined Apply action (incl. index).");
+            if (verboseLogging) MelonLogger.Msg($"ComponentRestorer: Added mapping for {jsonTypeName} with combined Apply action (incl. index).");
             // } else { ... Error Log ... }
         }
         // --- END Helper ---
@@ -54,7 +54,7 @@ namespace ChloesManorMod
         private static void InitializeMappings(bool verboseLogging)
         {
             if (_mappingsInitialized) return;
-            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: Initializing component type mappings...");
+            if (verboseLogging) MelonLogger.Msg($"ComponentRestorer: Initializing component type mappings...");
             _componentMappings.Clear();
 
             // Correct lambdas to match the Action signature
@@ -71,7 +71,7 @@ namespace ChloesManorMod
             );
 
             _mappingsInitialized = true;
-            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: Component type mappings initialized.");
+            if (verboseLogging) MelonLogger.Msg($"ComponentRestorer: Component type mappings initialized.");
         }
         // --- END: Configuration Table ---
 
@@ -81,7 +81,7 @@ namespace ChloesManorMod
             // --- Initialize Mappings --- 
             if (string.IsNullOrEmpty(jsonContent))
             {
-                MelonLogger.Error($"{MainMod.MOD_TAG}: ComponentRestorer: JSON content is null or empty. Cannot restore components.");
+                MelonLogger.Error($"ComponentRestorer: JSON content is null or empty. Cannot restore components.");
                 return;
             }
 
@@ -97,18 +97,18 @@ namespace ChloesManorMod
 
                 if (hierarchyData == null || hierarchyData.gameObjects == null)
                 {
-                    MelonLogger.Error($"{MainMod.MOD_TAG}: ComponentRestorer: Failed to deserialize JSON using Newtonsoft.Json or data is invalid (returned null).");
+                    MelonLogger.Error($"ComponentRestorer: Failed to deserialize JSON using Newtonsoft.Json or data is invalid (returned null).");
                     return;
                 }
             }
             catch (System.Exception ex)
             {
                 // Catch potential exceptions from Newtonsoft
-                MelonLogger.Error($"{MainMod.MOD_TAG}: ComponentRestorer: Error deserializing JSON using Newtonsoft.Json: {ex.ToString()}");
+                MelonLogger.Error($"ComponentRestorer: Error deserializing JSON using Newtonsoft.Json: {ex.ToString()}");
                 return;
             }
 
-            MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: Successfully deserialized hierarchy data with {hierarchyData.gameObjects.Count} GameObject entries using Newtonsoft.Json.");
+            MelonLogger.Msg($"ComponentRestorer: Successfully deserialized hierarchy data with {hierarchyData.gameObjects.Count} GameObject entries using Newtonsoft.Json.");
 
             // Build a lookup for instantiated objects by path
             Dictionary<string, GameObject> instantiatedObjects = new Dictionary<string, GameObject>();
@@ -126,13 +126,13 @@ namespace ChloesManorMod
 
             if (string.IsNullOrEmpty(expectedJsonRootName))
             {
-                MelonLogger.Error($"{MainMod.MOD_TAG}: ComponentRestorer: Could not determine expected root name from JSON data!");
+                MelonLogger.Error($"ComponentRestorer: Could not determine expected root name from JSON data!");
                 // Decide if we should proceed with potentially mismatched paths or return
                 // return;
             }
             else if (verboseLogging)
             {
-                MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: Expected root name from JSON: {expectedJsonRootName}");
+                MelonLogger.Msg($"ComponentRestorer: Expected root name from JSON: {expectedJsonRootName}");
             }
             // --- 
 
@@ -151,7 +151,7 @@ namespace ChloesManorMod
 
             int restoredCount = 0;
 
-            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: Built path lookup with {instantiatedObjects.Count} entries. Comparing against JSON...");
+            if (verboseLogging) MelonLogger.Msg($"ComponentRestorer: Built path lookup with {instantiatedObjects.Count} entries. Comparing against JSON...");
 
             // Iterate through the data from JSON
             foreach (GameObjectData goData in hierarchyData.gameObjects)
@@ -161,7 +161,7 @@ namespace ChloesManorMod
                     // Optional: Log only if we *expected* to find it based on components
                     bool expectedTarget = goData.components.Exists(c => _componentMappings.Exists(m => m.JsonTypeName == c.typeFullName));
                     if (expectedTarget && verboseLogging)
-                        MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Could not find instantiated GameObject at path relevant for mapped components: '{goData.path}'. Skipping.");
+                        MelonLogger.Warning($"ComponentRestorer: Could not find instantiated GameObject at path relevant for mapped components: '{goData.path}'. Skipping.");
                     continue;
                 }
 
@@ -184,17 +184,17 @@ namespace ChloesManorMod
                         catch (Exception applyEx)
                         {
                             // Log with index
-                            MelonLogger.Error($"{MainMod.MOD_TAG}: ComponentRestorer: ApplyComponentAction failed for '{mapping.JsonTypeName}' at index {i}: {applyEx.Message}");
+                            MelonLogger.Error($"ComponentRestorer: ApplyComponentAction failed for '{mapping.JsonTypeName}' at index {i}: {applyEx.Message}");
                         }
                     }
                     else
                     {
-                        if (verboseLogging) MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: No ApplyComponentAction defined for mapping type '{mapping.JsonTypeName}'.");
+                        if (verboseLogging) MelonLogger.Warning($"ComponentRestorer: No ApplyComponentAction defined for mapping type '{mapping.JsonTypeName}'.");
                     }
                 }
             }
             // Removed restoredCount from the final log as we don't track additions easily this way
-            MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: Finished component restoration using combined action mappings.");
+            MelonLogger.Msg($"ComponentRestorer: Finished component restoration using combined action mappings.");
         }
 
         // --- Smuggling Helper Functions --- UPDATED
@@ -213,16 +213,16 @@ namespace ChloesManorMod
                 {
                     retrievedMaterial = meshRenderer.sharedMaterial;
                     if (retrievedMaterial != null && verbose)
-                        MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: -> Found placeholder '{placeholderName}', retrieved Material '{retrievedMaterial?.name ?? "null"}' from MeshRenderer.");
+                        MelonLogger.Msg($"ComponentRestorer: -> Found placeholder '{placeholderName}', retrieved Material '{retrievedMaterial?.name ?? "null"}' from MeshRenderer.");
                 }
                 else if (meshRenderer == null && verbose)
-                    MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: -> Found placeholder '{placeholderName}' but it missing MeshRenderer component.");
+                    MelonLogger.Warning($"ComponentRestorer: -> Found placeholder '{placeholderName}' but it missing MeshRenderer component.");
 
                 UnityEngine.Object.Destroy(smugglerTransform.gameObject); // Clean up placeholder
             }
             // Updated log to reflect that the *specific* placeholder wasn't found
             else if (verbose)
-                MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: - Placeholder '{placeholderName}' not found for smuggled material property.");
+                MelonLogger.Msg($"ComponentRestorer: - Placeholder '{placeholderName}' not found for smuggled material property.");
 
             return retrievedMaterial;
         }
@@ -232,7 +232,7 @@ namespace ChloesManorMod
             Transform smugglerTransform = target.transform.Find(placeholderName);
             Sprite retrievedSprite = null;
             // ... rest of logic ...
-             if (verbose) MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: - Placeholder '{placeholderName}' not found for smuggled sprite property.");
+             if (verbose) MelonLogger.Msg($"ComponentRestorer: - Placeholder '{placeholderName}' not found for smuggled sprite property.");
             return retrievedSprite;
         }
 
@@ -288,7 +288,7 @@ namespace ChloesManorMod
         {
             if (properties == null)
             {
-                if (verbose) MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: [GetValue] Properties dictionary is null. Cannot get key '{key}'. Returning default.");
+                if (verbose) MelonLogger.Warning($"ComponentRestorer: [GetValue] Properties dictionary is null. Cannot get key '{key}'. Returning default.");
                 return defaultValue;
             }
 
@@ -323,12 +323,12 @@ namespace ChloesManorMod
                 catch (Exception e)
                 {
                     // Improved error logging
-                    MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: [GetValue] Failed converting property '{key}' to {typeof(T).Name}. Exception: {e.Message}. (Value: '{valueObj}', Type: {valueObj?.GetType().Name})");
+                    MelonLogger.Warning($"ComponentRestorer: [GetValue] Failed converting property '{key}' to {typeof(T).Name}. Exception: {e.Message}. (Value: '{valueObj}', Type: {valueObj?.GetType().Name})");
                     return defaultValue;
                 }
             }
             // Only log if verbose and key not found
-            if (verbose) MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: [GetValue] Property '{key}' not found in JSON data.");
+            if (verbose) MelonLogger.Warning($"ComponentRestorer: [GetValue] Property '{key}' not found in JSON data.");
             return defaultValue;
         }
         // --- END Helper Function ---
@@ -342,17 +342,17 @@ namespace ChloesManorMod
             DecalProjector decalProjector = targetGO.GetComponent<DecalProjector>();
             if (decalProjector == null)
             {
-                if (verbose) MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: DecalProjector not found on '{targetGO.name}'. Adding...");
+                if (verbose) MelonLogger.Msg($"ComponentRestorer: DecalProjector not found on '{targetGO.name}'. Adding...");
                 decalProjector = targetGO.AddComponent<DecalProjector>();
                 if (decalProjector == null)
                 { // Check if AddComponent failed
-                    MelonLogger.Error($"{MainMod.MOD_TAG}: ComponentRestorer: Failed to add DecalProjector component to '{targetGO.name}'.");
+                    MelonLogger.Error($"ComponentRestorer: Failed to add DecalProjector component to '{targetGO.name}'.");
                     return;
                 }
             }
             else
             {
-                if (verbose) MelonLogger.Msg($"{MainMod.MOD_TAG}: ComponentRestorer: Found existing DecalProjector on '{targetGO.name}'.");
+                if (verbose) MelonLogger.Msg($"ComponentRestorer: Found existing DecalProjector on '{targetGO.name}'.");
             }
 
             // Apply properties directly
@@ -361,41 +361,41 @@ namespace ChloesManorMod
             // --- Check if Properties dictionary exists ---
             if (data.Properties == null)
             {
-                if (verbose) MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: No 'Properties' dictionary found in JSON data for DecalProjector on '{targetGO.name}'. Skipping property application.");
+                if (verbose) MelonLogger.Warning($"ComponentRestorer: No 'Properties' dictionary found in JSON data for DecalProjector on '{targetGO.name}'. Skipping property application.");
                 return; // Can't apply properties if the dictionary is missing
             }
 
             // --- Apply properties from dictionary using GetValue helper ---
             // Comment out individual property logs
             try { decalProjector.drawDistance = GetValue<float>(data.Properties, "drawDistance", verbose); /* if (verbose) MelonLogger.Msg($"      - Set drawDistance = {decalProjector.drawDistance}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying drawDistance: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying drawDistance: {e.Message}"); }
 
             try { decalProjector.fadeScale = GetValue<float>(data.Properties, "fadeScale", verbose); /* if (verbose) MelonLogger.Msg($"      - Set fadeScale = {decalProjector.fadeScale}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying fadeScale: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying fadeScale: {e.Message}"); }
 
             try { decalProjector.startAngleFade = GetValue<float>(data.Properties, "startAngleFade", verbose); /* if (verbose) MelonLogger.Msg($"      - Set startAngleFade = {decalProjector.startAngleFade}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying startAngleFade: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying startAngleFade: {e.Message}"); }
 
             try { decalProjector.endAngleFade = GetValue<float>(data.Properties, "endAngleFade", verbose); /* if (verbose) MelonLogger.Msg($"      - Set endAngleFade = {decalProjector.endAngleFade}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying endAngleFade: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying endAngleFade: {e.Message}"); }
 
             try { decalProjector.uvScale = GetValue<Vector2>(data.Properties, "uvScale", verbose); /* if (verbose) MelonLogger.Msg($"      - Set uvScale = {decalProjector.uvScale}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying uvScale: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying uvScale: {e.Message}"); }
 
             try { decalProjector.uvBias = GetValue<Vector2>(data.Properties, "uvBias", verbose); /* if (verbose) MelonLogger.Msg($"      - Set uvBias = {decalProjector.uvBias}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying uvBias: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying uvBias: {e.Message}"); }
 
             try { decalProjector.renderingLayerMask = GetValue<uint>(data.Properties, "renderingLayerMask", verbose); /* if (verbose) MelonLogger.Msg($"      - Set renderingLayerMask = {decalProjector.renderingLayerMask}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying renderingLayerMask: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying renderingLayerMask: {e.Message}"); }
 
             try { decalProjector.pivot = GetValue<Vector3>(data.Properties, "pivot", verbose); /* if (verbose) MelonLogger.Msg($"      - Set pivot = {decalProjector.pivot}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying pivot: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying pivot: {e.Message}"); }
 
             try { decalProjector.size = GetValue<Vector3>(data.Properties, "size", verbose); /* if (verbose) MelonLogger.Msg($"      - Set size = {decalProjector.size}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying size: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying size: {e.Message}"); }
 
             try { decalProjector.fadeFactor = GetValue<float>(data.Properties, "fadeFactor", verbose); /* if (verbose) MelonLogger.Msg($"      - Set fadeFactor = {decalProjector.fadeFactor}"); */ }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Error applying fadeFactor: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Error applying fadeFactor: {e.Message}"); }
 
             // Enum assignment
             try
@@ -404,7 +404,7 @@ namespace ChloesManorMod
                 decalProjector.scaleMode = (DecalScaleMode)scaleModeInt;
                 // if (verbose) MelonLogger.Msg($"      - Set scaleMode = {(DecalScaleMode)scaleModeInt} (from int {scaleModeInt})"); // REMOVED
             }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Failed setting scaleMode: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Failed setting scaleMode: {e.Message}"); }
 
             // Smuggled material assignment
             try
@@ -423,7 +423,7 @@ namespace ChloesManorMod
                 //      MelonLogger.Msg($"      - Property 'material' (placeholder name) not found or not a string in JSON for component index {componentIndex}.");
                 // }
             }
-            catch (Exception e) { MelonLogger.Warning($"{MainMod.MOD_TAG}: ComponentRestorer: Failed setting material from smuggler: {e.Message}"); }
+            catch (Exception e) { MelonLogger.Warning($"ComponentRestorer: Failed setting material from smuggler: {e.Message}"); }
 
             // if (verbose) MelonLogger.Msg($"    - Finished applying DecalProjector specific properties for index {componentIndex}."); // REMOVED
         }

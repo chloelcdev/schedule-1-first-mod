@@ -12,7 +12,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Include="chloemanorsetup" />
+	  <EmbeddedResource Include="chloemanorsetup" />
 	</ItemGroup>
 
 	<ItemGroup>

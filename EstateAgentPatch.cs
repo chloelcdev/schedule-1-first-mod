@@ -37,21 +37,21 @@ namespace ChloesManorMod // Your actual mod namespace
                     if (handler == null)
                     {
                         // This would be very unusual if the NPC is functional
-                        MelonLogger.Error($"ManorPurchaseEventHandler: npc.dialogueHandler is NULL on NPC '{npc.name}'. Cannot attach listener.");
+                        MelonLogger.Error($"ManorPurchase: npc.dialogueHandler is NULL on NPC '{npc.name}'. Cannot attach listener.");
                         return;
                     }
 
                     // --- Add Listener to the base DialogueHandler ---
                     if (attachedHandlers.Add(handler))
                     {
-                        MelonLogger.Msg($"ManorPurchaseEventHandler: Attaching listener to onDialogueChoiceChosen for handler on {npc.name} (Handler Type: {handler.GetType().FullName}, Instance ID: {handler.GetInstanceID()})");
+                        MelonLogger.Msg($"ManorPurchase: Attaching listener to onDialogueChoiceChosen for handler on {npc.name} (Handler Type: {handler.GetType().FullName}, Instance ID: {handler.GetInstanceID()})");
                         // Cast our static method to Il2CppSystem.Action<string>
                         handle_manor_choice_unityaction = (UnityEngine.Events.UnityAction<string>)HandleManorChoice;
                         handler.onDialogueChoiceChosen.AddListener(handle_manor_choice_unityaction);
                     }
                     else
                     {
-                        MelonLogger.Msg($"ManorPurchaseEventHandler: Listener already attached to handler on {npc.name} (Instance ID: {handler.GetInstanceID()}). Skipping.");
+                        MelonLogger.Msg($"ManorPurchase: Listener already attached to handler on {npc.name} (Instance ID: {handler.GetInstanceID()}). Skipping.");
                     }
                 }
             }
@@ -77,21 +77,21 @@ namespace ChloesManorMod // Your actual mod namespace
                         // --- Remove Listener ---
                         if (attachedHandlers.Remove(handler))
                         {
-                            MelonLogger.Msg($"ManorPurchaseEventHandler: Removing listener from onDialogueChoiceChosen for handler on {npc.name} (Instance ID: {handler.GetInstanceID()})");
+                            MelonLogger.Msg($"ManorPurchase: Removing listener from onDialogueChoiceChosen for handler on {npc.name} (Instance ID: {handler.GetInstanceID()})");
                             try
                             {
                                 // Remove using the cast delegate type
                                 handler.onDialogueChoiceChosen.RemoveListener(handle_manor_choice_unityaction);
-                                MelonLogger.Msg($"ManorPurchaseEventHandler: Successfully removed listener.");
+                                MelonLogger.Msg($"ManorPurchase: Successfully removed listener.");
                             }
                             catch (System.Exception ex)
                             {
-                                MelonLogger.Error($"ManorPurchaseEventHandler: Error removing listener: {ex.Message}");
+                                MelonLogger.Error($"ManorPurchase: Error removing listener: {ex.Message}");
                             }
                         }
                         //else
                         //{
-                        //    MelonLogger.Warning($"ManorPurchaseEventHandler: Attempted to remove listener, but handler on {npc.name} was not tracked.");
+                        //    MelonLogger.Warning($"ManorPurchase: Attempted to remove listener, but handler on {npc.name} was not tracked.");
                         //}
                     }
                     //else
@@ -121,7 +121,7 @@ namespace ChloesManorMod // Your actual mod namespace
                     return;
                 }
                 float manorPrice = manorProperty.Price;
-                MelonLogger.Msg($"ManorPurchaseEventHandler: Found Manor property: {manorProperty.PropertyName}. Price: {manorPrice}");
+                MelonLogger.Msg($"ManorPurchase: Found Manor property: {manorProperty.PropertyName}. Price: {manorPrice}");
 
                 MoneyManager moneyManager = MoneyManager.Instance;
                  if (moneyManager == null)
@@ -134,22 +134,22 @@ namespace ChloesManorMod // Your actual mod namespace
 
                 if (!canAfford)
                 {
-                    MelonLogger.Warning($"ManorPurchaseEventHandler: Player cannot afford Manor (Price: {manorPrice}, Balance: {moneyManager.onlineBalance}). Purchase aborted.");
+                    MelonLogger.Warning($"ManorPurchase: Player cannot afford Manor (Price: {manorPrice}, Balance: {moneyManager.onlineBalance}). Purchase aborted.");
                     return;
                 }
-                MelonLogger.Msg($"ManorPurchaseEventHandler: Player can afford Manor. Balance: {moneyManager.onlineBalance}");
+                MelonLogger.Msg($"ManorPurchase: Player can afford Manor. Balance: {moneyManager.onlineBalance}");
 
                 string transactionName = $"Property Purchase ({manorProperty.PropertyName})";
                 string transactionNote = $"Bought {manorProperty.PropertyName}";
                 float amountToSpend = -manorPrice;
                 float quantity = 1;
 
-                MelonLogger.Msg($"ManorPurchaseEventHandler: Creating online transaction: Name='{transactionName}', Amount={amountToSpend}, Quantity={quantity}");
+                MelonLogger.Msg($"ManorPurchase: Creating online transaction: Name='{transactionName}', Amount={amountToSpend}, Quantity={quantity}");
                 moneyManager.CreateOnlineTransaction(transactionName, amountToSpend, quantity, transactionNote);
 
-                MelonLogger.Msg($"ManorPurchaseEventHandler: Calling SetOwned() on Manor property (Instance ID: {manorProperty.GetInstanceID()}).");
+                MelonLogger.Msg($"ManorPurchase: Calling SetOwned() on Manor property (Instance ID: {manorProperty.GetInstanceID()}).");
                 manorProperty.SetOwned();
-                MelonLogger.Msg($"ManorPurchaseEventHandler: SetOwned() called. Ownership & Balance should update via network.");
+                MelonLogger.Msg($"ManorPurchase: SetOwned() called. Ownership & Balance should update via network.");
             }
         }
     }
