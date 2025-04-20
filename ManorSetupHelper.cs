@@ -49,10 +49,10 @@ namespace ChloesManorMod
         /// <param name="manorProperty">The Il2Cpp Property object for the Manor.</param>
         public static void ConfigureManorSetup(GameObject spawnedInstanceRoot, Property manorProperty)
         {
-            MelonLogger.Msg($"--- ManorSetupHelper starting configuration for '{manorProperty.PropertyName}' ---");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Starting configuration for '{manorProperty.PropertyName}' ---");
             if (spawnedInstanceRoot == null || manorProperty == null)
             {
-                MelonLogger.Error("ManorSetupHelper: Aborting due to null instance or property.");
+                MelonLogger.Error($"{MainMod.MOD_TAG}: ManorSetupHelper: Aborting due to null instance or property.");
                 return;
             }
 
@@ -67,15 +67,13 @@ namespace ChloesManorMod
 
             // --- Grid Check ---
             Grid manorGrid = spawnedInstanceRoot.GetComponentInChildren<Grid>(true);
-            if (manorGrid != null) { }
-            else { MelonLogger.Error($"   !!! FAILED to find Grid component within spawned instance '{spawnedInstanceRoot.name}'! Building may fail."); }
-
-            // --- Find Template Save Point Materials ---
-            Material[] templateSavePointMaterials = FindTemplateSavePointMaterials();
-            // --- End Find Template Materials ---
+            if (manorGrid == null)
+            {
+                MelonLogger.Error($"{MainMod.MOD_TAG}: ManorSetupHelper: FAILED to find Grid component within spawned instance '{spawnedInstanceRoot.name}'! Building may fail.");
+            }
 
             // --- Find and Configure Custom Loading Docks ---
-            MelonLogger.Msg($"Finding LoadingDock components within '{parentTransform.name}'...");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Finding LoadingDock components within '{parentTransform.name}'...");
             var foundDockComponents = parentTransform.GetComponentsInChildren<LoadingDock>(true);
 
             Il2CppSystem.Collections.Generic.List<LoadingDock> docksToAdd = new();
@@ -90,15 +88,11 @@ namespace ChloesManorMod
             // --- Update Manor Property's LoadingDocks Array ---
             if (docksToAdd.Count > 0)
             {
-                MelonLogger.Msg($"Assigning {docksToAdd.Count} configured docks to Manor Property...");
-                manorProperty.LoadingDocks = new (docksToAdd.ToArray()); // lookie der
-                MelonLogger.Msg($"Manor assigned {manorProperty.LoadingDocks.Length} LoadingDocks.");
+                MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Assigning {docksToAdd.Count} configured docks to Manor Property...");
+                manorProperty.LoadingDocks = new (docksToAdd.ToArray());
+                MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Manor assigned {manorProperty.LoadingDocks.Length} LoadingDocks.");
             }
-            else { MelonLogger.Warning("No valid LoadingDock components found in prefab to assign to Manor."); }
-
-            // --- Apply Stolen Materials to Custom Save Point ---
-            ApplyMaterialsToCustomSavePoint(parentTransform, templateSavePointMaterials);
-            // --- End Apply Materials ---
+            else { MelonLogger.Warning($"{MainMod.MOD_TAG}: ManorSetupHelper: No valid LoadingDock components found in prefab to assign to Manor."); }
 
             // --- Configure NPC Spawn Point ---
             Transform npcSpawnPoint = FindDeepChild(parentTransform, NpcSpawnPointName);
@@ -106,11 +100,11 @@ namespace ChloesManorMod
             {
                 if (manorProperty.NPCSpawnPoint == null)
                 {
-                    MelonLogger.Msg($"Assigning NPC Spawn Point '{npcSpawnPoint.name}'.");
+                    MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Assigning NPC Spawn Point '{npcSpawnPoint.name}'.");
                     manorProperty.NPCSpawnPoint = npcSpawnPoint;
                 }
             }
-            else { MelonLogger.Warning($"Could not find '{NpcSpawnPointName}' in prefab children."); }
+            else { MelonLogger.Warning($"{MainMod.MOD_TAG}: ManorSetupHelper: Could not find '{NpcSpawnPointName}' in prefab children."); }
 
             // --- Configure Listing Poster ---
             Transform listingPoster = FindDeepChild(parentTransform, ListingPosterName);
@@ -118,14 +112,14 @@ namespace ChloesManorMod
             {
                 if (manorProperty.ListingPoster == null)
                 {
-                    MelonLogger.Msg($"Assigning Listing Poster '{listingPoster.name}'.");
+                    MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Assigning Listing Poster '{listingPoster.name}'.");
                     manorProperty.ListingPoster = listingPoster;
                 }
             }
-            else { MelonLogger.Warning($"Could not find '{ListingPosterName}' in prefab children."); }
+            else { MelonLogger.Warning($"{MainMod.MOD_TAG}: ManorSetupHelper: Could not find '{ListingPosterName}' in prefab children."); }
 
             // --- ADDED: Configure Modular Switches ---
-            MelonLogger.Msg("--- Configuring Modular Switches ---");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: --- Configuring Modular Switches ---");
             try
             {
                 // find all the switches in a format we can use
@@ -141,7 +135,7 @@ namespace ChloesManorMod
                 {
                     // Assign the found switches directly to the Manor's list
                     manorProperty.Switches = foundSwitches;
-                    MelonLogger.Msg($"Assigned {manorProperty.Switches.Count} ModularSwitch components to Manor property.");
+                    MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Assigned {manorProperty.Switches.Count} ModularSwitch components to Manor property.");
 
                     // Optional: Add listener for changes if needed (Property.cs does this, maybe redundant)
                     // foreach (ModularSwitch sw in manorProperty.Switches) {
@@ -156,7 +150,7 @@ namespace ChloesManorMod
                 }
                 else
                 {
-                    MelonLogger.Warning("No ModularSwitch components found within the spawned prefab instance.");
+                    MelonLogger.Warning($"{MainMod.MOD_TAG}: ManorSetupHelper: No ModularSwitch components found within the spawned prefab instance.");
                     // Ensure the list is at least initialized if none are found
                     if (manorProperty.Switches == null)
                         manorProperty.Switches = new ();
@@ -166,9 +160,9 @@ namespace ChloesManorMod
             }
             catch (System.Exception e)
             {
-                 MelonLogger.Error($"Error configuring Modular Switches: {e.Message}");
+                 MelonLogger.Error($"{MainMod.MOD_TAG}: ManorSetupHelper: Error configuring Modular Switches: {e.Message}");
             }
-            MelonLogger.Msg("----------------------------------");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: ----------------------------------");
             // --- END Configure Modular Switches ---
 
             // --- Configure Switches and Toggleables AFTER prefab setup is complete ---
@@ -183,102 +177,9 @@ namespace ChloesManorMod
             // --- NEW: Configure the listing at the Realty Office ---
             ConfigureRealtyListing(spawnedInstanceRoot); // Call the new method
 
-            MelonLogger.Msg($"--- ManorSetupHelper configuration FINISHED ---");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: --- Configuration FINISHED ---");
 
         } // End ConfigureManorSetup
-
-        // --- MODIFIED: Helper to find template Save Point materials WITH SHADER LOGGING ---
-        private static Material[] FindTemplateSavePointMaterials()
-        {
-            MelonLogger.Msg($"--- Finding Template Save Point Materials ---");
-
-            GameObject templateSavePointGO = GameObject.Find(TemplateSavePointGOName);
-            if (templateSavePointGO == null) { MelonLogger.Error($"Could not find template Save Point GO: '{TemplateSavePointGOName}'"); return null; }
-
-            Transform intermediateChild = templateSavePointGO.transform.Find(IntermediateGOName);
-            if (intermediateChild == null) { MelonLogger.Error($"Could not find intermediate child '{IntermediateGOName}' under template '{templateSavePointGO.name}'!"); return null; }
-
-            Transform lodChild = intermediateChild.Find(LodGOName);
-            if (lodChild == null) { MelonLogger.Error($"Could not find LOD child '{LodGOName}' under intermediate '{intermediateChild.name}'!"); return null; }
-
-            MeshRenderer templateRenderer = lodChild.GetComponent<MeshRenderer>();
-            if (templateRenderer == null) { MelonLogger.Error($"No MeshRenderer on template LOD child '{lodChild.name}'!"); return null; }
-
-            // Get the materials array (this is a copy)
-            Material[] materials = templateRenderer.materials;
-            if (materials == null || materials.Length == 0) { MelonLogger.Warning($"Template LOD child '{lodChild.name}' has no materials!"); return null; }
-
-            MelonLogger.Msg($"Retrieved {materials.Length} materials from template '{lodChild.name}'.");
-
-            // ***** ADDED SHADER NAME LOGGING *****
-            MelonLogger.Msg("   Logging TEMPLATE material shaders:");
-            for(int i=0; i < materials.Length; i++)
-            {
-                if (materials[i] != null && materials[i].shader != null)
-                {
-                    // Log the shader name if both material and shader exist
-                    MelonLogger.Msg($"     - Material {i} ('{materials[i].name}'): Shader = '{materials[i].shader.name}'");
-                }
-                else if (materials[i] != null)
-                {
-                    // Log if the material exists but the shader is null
-                     MelonLogger.Msg($"     - Material {i} ('{materials[i].name}'): Shader = NULL");
-                }
-                else
-                {
-                    // Log if the material slot itself is null
-                    MelonLogger.Msg($"     - Material {i}: NULL Material");
-                }
-            }
-            MelonLogger.Msg("   Finished logging template shaders.");
-            // ***** END ADDED LOGGING *****
-
-            return materials; // Return the array of materials
-        }
-
-        // --- MODIFIED: Helper to apply materials to custom Save Point ---
-        private static void ApplyMaterialsToCustomSavePoint(Transform prefabRoot, Material[] materialsToApply)
-        {
-            if (materialsToApply == null || materialsToApply.Length == 0)
-            {
-                MelonLogger.Warning("Skipping save point material application: No template materials.");
-                return;
-            }
-
-            MelonLogger.Msg($"--- Applying Materials to Custom Save Point ---");
-
-            Transform customSavePointTransform = FindDeepChild(prefabRoot, TargetSavePointGOName);
-            if (customSavePointTransform == null) { MelonLogger.Error($"Could not find custom Save Point GO: '{TargetSavePointGOName}'"); return; }
-
-            // Find the intermediate "Intercom" child under the custom save point
-            Transform customIntermediateChild = customSavePointTransform.Find(IntermediateGOName);
-             if (customIntermediateChild == null)
-            {
-                MelonLogger.Error($"Could not find intermediate child '{IntermediateGOName}' under custom Save Point '{customSavePointTransform.name}'!");
-                return;
-            }
-
-            // Find the LOD child under the custom intermediate child
-            Transform customLodChild = customIntermediateChild.Find(LodGOName);
-            if (customLodChild == null)
-            {
-                MelonLogger.Error($"Could not find LOD child '{LodGOName}' under custom intermediate child '{customIntermediateChild.name}'!");
-                return;
-            }
-
-            MeshRenderer customRenderer = customLodChild.GetComponent<MeshRenderer>();
-            if (customRenderer == null) { MelonLogger.Error($"No MeshRenderer on custom LOD child '{customLodChild.name}'!"); return; }
-
-            try
-            {
-                customRenderer.materials = materialsToApply;
-                MelonLogger.Msg($"Applied {materialsToApply.Length} materials to '{customLodChild.name}'.");
-            }
-            catch (System.Exception e)
-            {
-                MelonLogger.Error($"Failed to apply materials to '{customLodChild.name}': {e.Message}");
-            }
-        }
 
         // --- Helper Function to Find Deep Child ---
         private static Transform FindDeepChild(Transform parent, string childName)
@@ -308,7 +209,7 @@ namespace ChloesManorMod
         // --- NEW: Combined Switch/Toggleable Logic ---
         private static void ConfigureSwitchesAndToggleables(Property manorProperty)
         {
-             MelonLogger.Msg("--- Configuring Switches & Toggleables for Manor ---");
+             MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: --- Configuring Switches & Toggleables for Manor ---");
              // Search starting from the property's main transform to include everything
              Transform propertyTransform = manorProperty.transform;
 
@@ -319,12 +220,12 @@ namespace ChloesManorMod
                  if (foundSwitches != null) // Don't assume Length > 0, just assign if found
                  {
                      manorProperty.Switches = foundSwitches;
-                     MelonLogger.Msg($"Assigned {manorProperty.Switches.Count} ModularSwitch components to Manor.");
+                     MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Assigned {manorProperty.Switches.Count} ModularSwitch components to Manor.");
                  } else { // Should not happen unless GetComponentsInChildren returns null
-                      MelonLogger.Warning("GetComponentsInChildren<ModularSwitch> returned null unexpectedly.");
+                      MelonLogger.Warning($"{MainMod.MOD_TAG}: ManorSetupHelper: GetComponentsInChildren<ModularSwitch> returned null unexpectedly.");
                  }
              }
-             catch (System.Exception e) { MelonLogger.Error($"Error configuring Modular Switches: {e.Message}"); }
+             catch (System.Exception e) { MelonLogger.Error($"{MainMod.MOD_TAG}: ManorSetupHelper: Error configuring Modular Switches: {e.Message}"); }
 
              // Toggleables
              try
@@ -333,7 +234,7 @@ namespace ChloesManorMod
                    if (foundToggleables != null)
                   {
                       manorProperty.Toggleables = foundToggleables;
-                      MelonLogger.Msg($"Assigned {manorProperty.Toggleables.Count} InteractableToggleable components to Manor.");
+                      MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Assigned {manorProperty.Toggleables.Count} InteractableToggleable components to Manor.");
 
                       // Re-attach listeners AFTER the list is populated, mimicking Property.Awake logic
                       foreach (InteractableToggleable toggleable in manorProperty.Toggleables)
@@ -347,14 +248,14 @@ namespace ChloesManorMod
                                toggleable.onToggle.AddListener((UnityEngine.Events.UnityAction)ToggleAction);
                           }
                       }
-                       MelonLogger.Msg($"Re-attached listeners for {manorProperty.Toggleables.Count} Toggleables.");
+                       MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Re-attached listeners for {manorProperty.Toggleables.Count} Toggleables.");
                   } else {
-                       MelonLogger.Warning("GetComponentsInChildren<InteractableToggleable> returned null unexpectedly.");
+                       MelonLogger.Warning($"{MainMod.MOD_TAG}: ManorSetupHelper: GetComponentsInChildren<InteractableToggleable> returned null unexpectedly.");
                   }
              }
-             catch (System.Exception e) { MelonLogger.Error($"Error configuring InteractableToggleables: {e.Message}"); }
+             catch (System.Exception e) { MelonLogger.Error($"{MainMod.MOD_TAG}: ManorSetupHelper: Error configuring InteractableToggleables: {e.Message}"); }
 
-             MelonLogger.Msg("--------------------------------------------------");
+             MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: --------------------------------------------------");
         }
 
          // --- NEW: Static helper mirroring Property's internal ToggleableActioned ---
@@ -367,13 +268,13 @@ namespace ChloesManorMod
              // but we might need to manually trigger the RPC if state changes *after* initial spawn?
              // For now, just marking dirty might be enough for saving.
              // Let's test this first before adding RPC calls from here.
-              MelonLogger.Msg($"Toggleable '{toggleable.name}' actioned. Marked Manor Property dirty.");
+              MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Toggleable '{toggleable.name}' actioned. Marked Manor Property dirty.");
          }
 
         // --- NEW: Method to configure Employee Idle Points ---
         private static void ConfigureEmployeeIdlePoints(Transform prefabRoot, Property manorProperty)
         {
-            MelonLogger.Msg("--- Configuring Employee Idle Points ---");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: --- Configuring Employee Idle Points ---");
 
             // 1. Find the container for EXTRA points in the PREFAB
             // Assuming "Extra Employee Idle Points" is under "AtTheProperty" which is under the root
@@ -385,10 +286,10 @@ namespace ChloesManorMod
 
             if (extraPointsContainer == null)
             {
-                MelonLogger.Warning($"Could not find '{ExtraIdlePointsContainerName}' container within prefab. Skipping adding extra idle points.");
+                MelonLogger.Warning($"{MainMod.MOD_TAG}: ManorSetupHelper: Could not find '{ExtraIdlePointsContainerName}' container within prefab. Skipping adding extra idle points.");
                 return; // Nothing to add
             }
-            MelonLogger.Msg($"Found '{ExtraIdlePointsContainerName}' container in prefab.");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Found '{ExtraIdlePointsContainerName}' container in prefab.");
 
             var combinedIdlePoints = manorProperty.EmployeeIdlePoints.ToList();
 
@@ -396,45 +297,45 @@ namespace ChloesManorMod
             for (int i = 0; i < extraPointsContainer.childCount; i++)
                 combinedIdlePoints.Add(extraPointsContainer.GetChild(i));
 
-            MelonLogger.Msg($"Added {extraPointsContainer.childCount} extra idle point transforms from '{ExtraIdlePointsContainerName}'.");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Added {extraPointsContainer.childCount} extra idle point transforms from '{ExtraIdlePointsContainerName}'.");
 
 
             // 4. Assign the combined list back to the Property's array
             manorProperty.EmployeeIdlePoints = combinedIdlePoints.ToReferenceArray();
-            MelonLogger.Msg($"Set Manor EmployeeIdlePoints array. New total count: {manorProperty.EmployeeIdlePoints.Length}");
-            MelonLogger.Msg("--------------------------------------");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Set Manor EmployeeIdlePoints array. New total count: {manorProperty.EmployeeIdlePoints.Length}");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: --------------------------------------");
         }
 
         // --- NEW METHOD for Realty Listing ---
         private static void ConfigureRealtyListing(GameObject prefabRoot)
         {
-            MelonLogger.Msg("Attempting to configure realty listing...");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Attempting to configure realty listing...");
             Transform sourceListing = FindDeepChild(prefabRoot.transform, ListingPosterName);
             if (sourceListing == null)
             {
-                MelonLogger.Warning($"Could not find realty listing object '{ListingPosterName}' in prefab.");
+                MelonLogger.Warning($"{MainMod.MOD_TAG}: ManorSetupHelper: Could not find realty listing object '{ListingPosterName}' in prefab.");
                 return;
             }
 
             GameObject targetWhiteboard = GameObject.Find(WhiteboardPath);
             if (targetWhiteboard == null)
             {
-                MelonLogger.Error($"Could not find target whiteboard object at path '{WhiteboardPath}'. Cannot reparent listing.");
+                MelonLogger.Error($"{MainMod.MOD_TAG}: ManorSetupHelper: Could not find target whiteboard object at path '{WhiteboardPath}'. Cannot reparent listing.");
                 return;
             }
 
-            MelonLogger.Msg($"Found source listing '{sourceListing.name}' and target whiteboard '{targetWhiteboard.name}'. Attempting reparent.");
+            MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Found source listing '{sourceListing.name}' and target whiteboard '{targetWhiteboard.name}'. Attempting reparent.");
 
             try
             {
                 // Reparent the listing object to the whiteboard.
                 sourceListing.SetParent(targetWhiteboard.transform, true);
-                MelonLogger.Msg($"Successfully reparented '{sourceListing.name}' to '{targetWhiteboard.name}'.");
+                MelonLogger.Msg($"{MainMod.MOD_TAG}: ManorSetupHelper: Successfully reparented '{sourceListing.name}' to '{targetWhiteboard.name}'.");
             }
             catch (System.Exception ex) // Qualified Exception
             {
 
-                MelonLogger.Error($"Failed to reparent listing object: {ex.Message}");
+                MelonLogger.Error($"{MainMod.MOD_TAG}: ManorSetupHelper: Failed to reparent listing object: {ex.Message}");
                 MelonLogger.Error(ex); // Use MelonLoader's exception logging
             }
         }

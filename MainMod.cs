@@ -42,6 +42,8 @@ namespace ChloesManorMod
 { //23,880
     public partial class MainMod : MelonMod
     {
+        public const string MOD_TAG = "[Manor Mod]";
+
         private static Il2CppAssetBundle il2cppCustomAssetsBundle;
         private static GameObject manorSetupPrefab;
 
@@ -90,18 +92,18 @@ namespace ChloesManorMod
 
     public override void OnInitializeMelon()
     {
-            LoggerInstance.Msg($"{BuildInfo.Name} v{BuildInfo.Version} Initializing...");
+            LoggerInstance.Msg($"{MOD_TAG} {BuildInfo.Name} v{BuildInfo.Version} Initializing...");
             LoadAssetBundleViaManager();
 
-            // Apply Harmony Patches (Keep error log)
+            // Apply Harmony Patches
             try
             {
                 HarmonyInstance.PatchAll(typeof(MainMod).Assembly);
-                LoggerInstance.Msg("Harmony patches applied."); // Shortened success msg
+                LoggerInstance.Msg($"{MOD_TAG}: Harmony patches applied.");
             }
             catch (System.Exception e)
             {
-                LoggerInstance.Error($"Failed to apply Harmony patches: {e}");
+                LoggerInstance.Error($"{MOD_TAG}: Failed to apply Harmony patches: {e}");
             }
         }
 
@@ -137,7 +139,7 @@ namespace ChloesManorMod
             SpawnAndConfigurePrefab();
 
             // --- Debug: Check for NavMeshLink after spawning --- 
-            MelonLogger.Msg("--- Checking for NavMeshLink on DoorLinkAttempt ---");
+            MelonLogger.Msg($"{MOD_TAG}: --- Checking for NavMeshLink on DoorLinkAttempt ---");
             // Find the child object directly using transform.Find
             GameObject doorLinkGO = null;
             string relativePath = "AtTheProperty/Extra Navigation/DoorLinkAttempt";
@@ -152,11 +154,11 @@ namespace ChloesManorMod
 
             if (doorLinkGO != null) 
             {
-                MelonLogger.Msg($"Found GameObject: '{doorLinkGO.name}' using relative path: '{relativePath}'");
+                MelonLogger.Msg($"{MOD_TAG}: Found GameObject: '{doorLinkGO.name}' using relative path: '{relativePath}'");
                 NavMeshLink navLink = doorLinkGO.GetComponent<NavMeshLink>();
                 if (navLink != null)
                 {
-                    MelonLogger.Msg("  -> Found NavMeshLink component!");
+                    MelonLogger.Msg($"{MOD_TAG}: -> Found NavMeshLink component!");
                     // Optional: Log specific properties if needed
                     // MelonLogger.Msg($"     - StartPoint: {navLink.m_StartPoint}");
                     // MelonLogger.Msg($"     - EndPoint: {navLink.m_EndPoint}");
@@ -164,19 +166,19 @@ namespace ChloesManorMod
                 }
                 else 
                 {
-                     MelonLogger.Warning("  -> NavMeshLink component NOT FOUND on this GameObject!");
-                     MelonLogger.Warning("  -> Printing components!");
+                     MelonLogger.Warning($"{MOD_TAG}: -> NavMeshLink component NOT FOUND on this GameObject!");
+                     MelonLogger.Warning($"{MOD_TAG}: -> Printing components!");
                      foreach (Component component in doorLinkGO.GetComponents<Component>())
                      {
-                        MelonLogger.Warning($"  -> {component.name}: {component.GetType().Name}");
+                        MelonLogger.Warning($"{MOD_TAG}: -> {component.name}: {component.GetType().Name}");
                      }
                 }
             }
             else 
             {
-                MelonLogger.Error($"Could not find GameObject for NavMeshLink debug using relative path: '{relativePath}' within '{spawnedInstanceRoot?.name ?? "NULL"}'");
+                MelonLogger.Error($"{MOD_TAG}: Could not find GameObject for NavMeshLink debug using relative path: '{relativePath}' within '{spawnedInstanceRoot?.name ?? "NULL"}'");
             }
-            MelonLogger.Msg("--- Finished NavMeshLink Check ---");
+            MelonLogger.Msg($"{MOD_TAG}: --- Finished NavMeshLink Check ---");
             // --- End Debug ---
         }
 
@@ -192,43 +194,43 @@ namespace ChloesManorMod
 
                 using (System.IO.Stream stream = assembly.GetManifestResourceStream(resourceName))
                 {
-                    if (stream == null) { LoggerInstance.Error($"Failed to find embedded resource stream: {resourceName}"); return; }
+                    if (stream == null) { LoggerInstance.Error($"{MOD_TAG}: Failed to find embedded resource stream: {resourceName}"); return; }
                     byte[] assetData = new byte[stream.Length];
                     stream.Read(assetData, 0, assetData.Length);
                     il2cppCustomAssetsBundle = Il2CppAssetBundleManager.LoadFromMemory(assetData);
 
-                    if (il2cppCustomAssetsBundle == null) { LoggerInstance.Error("Il2CppAssetBundleManager.LoadFromMemory failed or returned null!"); }
-                    else { LoggerInstance.Msg($"AssetBundle '{BundleName}' loaded successfully."); } // Keep success/fail
+                    if (il2cppCustomAssetsBundle == null) { LoggerInstance.Error($"{MOD_TAG}: Il2CppAssetBundleManager.LoadFromMemory failed or returned null!"); }
+                    else { LoggerInstance.Msg($"{MOD_TAG}: AssetBundle '{BundleName}' loaded successfully."); } // Keep success/fail
                 }
             }
-            catch (System.MissingMethodException mmex) { LoggerInstance.Error($"Il2CppAssetBundleManager.LoadFromMemory method not found! {mmex.Message}"); il2cppCustomAssetsBundle = null; }
-            catch (System.Exception e) { LoggerInstance.Error($"Exception loading AssetBundle: {e}"); il2cppCustomAssetsBundle = null; }
+            catch (System.MissingMethodException mmex) { LoggerInstance.Error($"{MOD_TAG}: Il2CppAssetBundleManager.LoadFromMemory method not found! {mmex.Message}"); il2cppCustomAssetsBundle = null; }
+            catch (System.Exception e) { LoggerInstance.Error($"{MOD_TAG}: Exception loading AssetBundle: {e}"); il2cppCustomAssetsBundle = null; }
         }
 
         private void LoadPrefabsFromIl2CppBundle()
         {
-            if (il2cppCustomAssetsBundle == null) { LoggerInstance.Error("Cannot load prefab, AssetBundle is not loaded."); return; } // Keep error
+            if (il2cppCustomAssetsBundle == null) { LoggerInstance.Error($"{MOD_TAG}: Cannot load prefab, AssetBundle is not loaded."); return; } // Keep error
             if (manorSetupPrefab != null) { return; }
 
             // LoggerInstance.Msg($"Loading prefab '{PrefabName}' using Il2CppAssetBundle wrapper..."); // Removed verbose
             try
             {
                 UnityEngine.Object loadedAsset = il2cppCustomAssetsBundle.LoadAsset<GameObject>(PrefabName);
-                if (loadedAsset == null) { LoggerInstance.Error($"Failed to load '{PrefabName}' prefab!"); } // Keep error
+                if (loadedAsset == null) { LoggerInstance.Error($"{MOD_TAG}: Failed to load '{PrefabName}' prefab!"); } // Keep error
                 else
                 {
                     manorSetupPrefab = loadedAsset.TryCast<GameObject>();
-                    if (manorSetupPrefab != null) LoggerInstance.Msg($"Prefab '{PrefabName}' loaded successfully."); // Keep success
-                    else LoggerInstance.Error($"Loaded asset '{PrefabName}' failed to cast to GameObject!"); // Keep error
+                    if (manorSetupPrefab != null) LoggerInstance.Msg($"{MOD_TAG}: Prefab '{PrefabName}' loaded successfully."); // Keep success
+                    else LoggerInstance.Error($"{MOD_TAG}: Loaded asset '{PrefabName}' failed to cast to GameObject!"); // Keep error
                 }
             }
-            catch (System.Exception e) { LoggerInstance.Error($"Error loading prefab: {e}"); manorSetupPrefab = null; } // Keep error
+            catch (System.Exception e) { LoggerInstance.Error($"{MOD_TAG}: Error loading prefab: {e}"); manorSetupPrefab = null; } // Keep error
         }
 
         private void SpawnAndConfigurePrefab()
         {
-            if (manorSetupPrefab == null) { LoggerInstance.Error("Manor setup prefab not loaded. Cannot spawn."); return; } // Keep error
-            if (spawnedInstanceRoot != null) { LoggerInstance.Warning("Manor setup instance already exists. Skipping spawn."); return; } // Keep warning
+            if (manorSetupPrefab == null) { LoggerInstance.Error($"{MOD_TAG}: Manor setup prefab not loaded. Cannot spawn."); return; } // Keep error
+            if (spawnedInstanceRoot != null) { LoggerInstance.Warning($"{MOD_TAG}: Manor setup instance already exists. Skipping spawn."); return; } // Keep warning
 
             bool spawnedNetworked = false;
             NetworkManager networkManager = (NetworkManager._instances.Count > 0) ? NetworkManager._instances[0] : null;
@@ -256,17 +258,17 @@ namespace ChloesManorMod
                                 spawnedInstanceRoot = instanceToSpawn;
                                 spawnedInstanceRoot.name = PrefabName + "_NetworkInstance"; // Keep internal name change
                                 spawnedNetworked = true;
-                                LoggerInstance.Msg($"Network Spawn successful: {spawnedInstanceRoot.name}"); // Keep success
+                                LoggerInstance.Msg($"{MOD_TAG}: Network Spawn successful: {spawnedInstanceRoot.name}"); // Keep success
                             }
-                            else { LoggerInstance.Error("Instantiated prefab missing NetworkObject! Cannot network spawn."); GameObject.Destroy(instanceToSpawn); } // Keep error
+                            else { LoggerInstance.Error($"{MOD_TAG}: Instantiated prefab missing NetworkObject! Cannot network spawn."); GameObject.Destroy(instanceToSpawn); } // Keep error
                         }
-                        else { LoggerInstance.Error("Instantiate returned null during network attempt!"); } // Keep error
+                        else { LoggerInstance.Error($"{MOD_TAG}: Instantiate returned null during network attempt!"); } // Keep error
                     }
-                    catch (System.Exception e) { LoggerInstance.Error($"Exception during Network Spawn attempt: {e}"); if (instanceToSpawn != null) GameObject.Destroy(instanceToSpawn); spawnedNetworked = false; spawnedInstanceRoot = null; spawnedNetworkObject = null; } // Keep error
+                    catch (System.Exception e) { LoggerInstance.Error($"{MOD_TAG}: Exception during Network Spawn attempt: {e}"); if (instanceToSpawn != null) GameObject.Destroy(instanceToSpawn); spawnedNetworked = false; spawnedInstanceRoot = null; spawnedNetworkObject = null; } // Keep error
                 }
-                else { LoggerInstance.Warning($"Prefab '{PrefabName}' missing NetworkObject. Falling back to local spawn."); } // Keep warning
+                else { LoggerInstance.Warning($"{MOD_TAG}: Prefab '{PrefabName}' missing NetworkObject. Falling back to local spawn."); } // Keep warning
             }
-            else { LoggerInstance.Msg("Server not active or NetworkManager not found. Using local spawn."); } // Keep info
+            else { LoggerInstance.Msg($"{MOD_TAG}: Server not active or NetworkManager not found. Using local spawn."); } // Keep info
 
             // Local Spawn (Fallback)
             if (!spawnedNetworked)
@@ -278,11 +280,11 @@ namespace ChloesManorMod
                     if (spawnedInstanceRoot != null)
                     {
                         spawnedInstanceRoot.name = PrefabName + "_LocalInstance"; // Keep internal name change
-                        LoggerInstance.Msg($"Local Instantiate successful: {spawnedInstanceRoot.name}"); // Keep success
+                        LoggerInstance.Msg($"{MOD_TAG}: Local Instantiate successful: {spawnedInstanceRoot.name}"); // Keep success
                     }
-                    else { LoggerInstance.Error("Local Instantiate returned null!"); return; } // Keep error
+                    else { LoggerInstance.Error($"{MOD_TAG}: Local Instantiate returned null!"); return; } // Keep error
                 }
-                catch (System.Exception e) { LoggerInstance.Error($"Exception during Local Instantiate: {e}"); spawnedInstanceRoot = null; return; } // Keep error
+                catch (System.Exception e) { LoggerInstance.Error($"{MOD_TAG}: Exception during Local Instantiate: {e}"); spawnedInstanceRoot = null; return; } // Keep error
             }
 
             // --- Ensure prefab is active before component restoration/setup ---
@@ -312,19 +314,19 @@ namespace ChloesManorMod
                         if (jsonTextAsset != null)
                         {
                             hierarchyJson = jsonTextAsset.text;
-                            MelonLogger.Msg("[MainMod] Loaded PreBundleBuildHierarchy.json TextAsset from bundle.");
+                            MelonLogger.Msg($"{MOD_TAG}: Loaded PreBundleBuildHierarchy.json TextAsset from bundle.");
                         }
-                        else { MelonLogger.Warning("[MainMod] Could not find 'PreBundleBuildHierarchy' TextAsset in the bundle."); }
+                        else { MelonLogger.Warning($"{MOD_TAG}: Could not find 'PreBundleBuildHierarchy' TextAsset in the bundle."); }
                     }
-                    catch (System.Exception e) { MelonLogger.Error($"[MainMod] Error loading TextAsset from bundle: {e.Message}"); }
+                    catch (System.Exception e) { MelonLogger.Error($"{MOD_TAG}: Error loading TextAsset from bundle: {e.Message}"); }
                 }
-                 else { MelonLogger.Error("[MainMod] Cannot load hierarchy JSON, asset bundle is null."); }
+                 else { MelonLogger.Error($"{MOD_TAG}: Cannot load hierarchy JSON, asset bundle is null."); }
                 // --- End Load JSON ---
 
                 // --- Component Restoration ---
                 if (!string.IsNullOrEmpty(hierarchyJson))
                 {
-                    MelonLogger.Msg("[MainMod] Attempting component restoration from JSON BEFORE parenting...");
+                    MelonLogger.Msg($"{MOD_TAG}: Attempting component restoration from JSON BEFORE parenting...");
                     // Pass the root transform directly, path lookup starts from here
                     ComponentRestorer.RestoreComponentsFromJSON(spawnedInstanceRoot, hierarchyJson, verboseLogging: true); 
                 }
@@ -333,7 +335,7 @@ namespace ChloesManorMod
                 // Now find the parent AFTER restoration
                 Property manorProperty = FindManor();
                 if (manorProperty == null) { 
-                    MelonLogger.Error("Manor property not found post-spawn/restoration. Cannot parent or configure further."); 
+                    MelonLogger.Error($"{MOD_TAG}: Manor property not found post-spawn/restoration. Cannot parent or configure further."); 
                     // Consider destroying spawnedInstanceRoot if parenting fails?
                     // UnityEngine.Object.Destroy(spawnedInstanceRoot);
                     // spawnedInstanceRoot = null;
@@ -344,10 +346,10 @@ namespace ChloesManorMod
                     try
                     {
                        spawnedInstanceRoot.transform.SetParent(manorProperty.transform, true);
-                       MelonLogger.Msg($"Parented '{spawnedInstanceRoot.name}' to Manor (worldPositionStays=true) AFTER component restoration.");
+                       MelonLogger.Msg($"{MOD_TAG}: Parented '{spawnedInstanceRoot.name}' to Manor (worldPositionStays=true) AFTER component restoration.");
         }
         catch (System.Exception e) {
-                        MelonLogger.Error($"Exception during SetParent: {e}"); 
+                        MelonLogger.Error($"{MOD_TAG}: Exception during SetParent: {e}"); 
                         // Consider destroying instance if parenting fails
                         return; 
                     }
@@ -356,13 +358,13 @@ namespace ChloesManorMod
                     // --- Shader Fix --- 
                     try
                     {
-                         MelonLogger.Msg("Attempting recursive shader fix BEFORE helper configuration...");
+                         MelonLogger.Msg($"{MOD_TAG}: Attempting recursive shader fix BEFORE helper configuration...");
                          URPShaderFix.FixShadersRecursive(spawnedInstanceRoot); // Pass GameObject directly
-                         MelonLogger.Msg("Shader fix applied recursively to spawned instance.");
+                         MelonLogger.Msg($"{MOD_TAG}: Shader fix applied recursively to spawned instance.");
                     }
                     catch(System.Exception e)
                     {
-                         MelonLogger.Error($"Exception during URPShaderFix execution: {e}");
+                         MelonLogger.Error($"{MOD_TAG}: Exception during URPShaderFix execution: {e}");
                          // return; 
                     }
                     // --- END SHADER FIX CALL ---
@@ -373,7 +375,7 @@ namespace ChloesManorMod
                     // LoggerInstance.Msg("ManorSetupHelper configuration called."); 
                 }
             }
-            else { MelonLogger.Error("Spawned instance root is null after spawn attempts. Cannot configure."); } 
+            else { MelonLogger.Error($"{MOD_TAG}: Spawned instance root is null after spawn attempts. Cannot configure."); } 
         }
 
         Property FindManor()
@@ -400,7 +402,7 @@ namespace ChloesManorMod
              // Keep cleanup logs as they indicate resource release
             if (spawnedNetworkObject != null)
             {
-                LoggerInstance.Msg($"Cleaning up NETWORKED instance (ObjectId: {spawnedNetworkObject.ObjectId}).");
+                LoggerInstance.Msg($"{MOD_TAG}: Cleaning up NETWORKED instance (ObjectId: {spawnedNetworkObject.ObjectId}).");
                 NetworkManager networkManager = (NetworkManager._instances.Count > 0) ? NetworkManager._instances[0] : null;
                 if (networkManager != null && networkManager.ServerManager.Started)
                 {
@@ -409,7 +411,7 @@ namespace ChloesManorMod
                         networkManager.ServerManager.Despawn(spawnedNetworkObject.gameObject, new(DespawnType.Destroy));
                         LoggerInstance.Msg("Network Despawn requested.");
                     }
-                    catch (System.Exception e) { LoggerInstance.Error($"Exception during Network Despawn: {e}"); if (spawnedInstanceRoot != null) GameObject.Destroy(spawnedInstanceRoot); }
+                    catch (System.Exception e) { LoggerInstance.Error($"{MOD_TAG}: Exception during Network Despawn: {e}"); if (spawnedInstanceRoot != null) GameObject.Destroy(spawnedInstanceRoot); }
                 }
                 else
                 {
@@ -419,7 +421,7 @@ namespace ChloesManorMod
             }
             else if (spawnedInstanceRoot != null)
             {
-                LoggerInstance.Msg($"Cleaning up LOCAL instance '{spawnedInstanceRoot.name}'.");
+                LoggerInstance.Msg($"{MOD_TAG}: Cleaning up LOCAL instance '{spawnedInstanceRoot.name}'.");
                 GameObject.Destroy(spawnedInstanceRoot);
             }
             spawnedInstanceRoot = null;
@@ -459,14 +461,14 @@ namespace ChloesManorMod
             // Prevent running multiple times if already successful
             if (dialogueModified)
             {
-                LoggerInstance.Msg("ModifyEstateAgentChoicesDirectly: Skipping, dialogue already modified.");
+                LoggerInstance.Msg($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Skipping, dialogue already modified.");
                 return;
             }
 
             const string TargetDialogueContainerName = "EstateAgent_Sell";
             const string PropertyChoiceNodeGuid = "8e2ef594-96d9-43f2-8cfa-6efaea823a56"; // GUID of the node presenting property choices
 
-            LoggerInstance.Msg($"Attempting to modify Ray's '{TargetDialogueContainerName}' dialogue event choices...");
+            LoggerInstance.Msg($"{MOD_TAG}: Attempting to modify Ray's '{TargetDialogueContainerName}' dialogue event choices...");
 
             // --- 1. Find Ray (NPC or Component) ---
             Component searchTargetComponent = null;
@@ -474,12 +476,12 @@ namespace ChloesManorMod
             if (rayInstance != null)
             {
                 searchTargetComponent = rayInstance;
-                LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found specific Ray component instance.");
+                LoggerInstance.Msg($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Found specific Ray component instance.");
             }
             else
             {
                 // Fallback: Find NPC GameObject named "Ray"
-                LoggerInstance.Warning($"ModifyEstateAgentChoicesDirectly: Could not find specific Ray component. Falling back to finding NPC GameObject named 'Ray'.");
+                LoggerInstance.Warning($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Could not find specific Ray component. Falling back to finding NPC GameObject named 'Ray'.");
                 NPC[] allNpcs = GameObject.FindObjectsOfType<NPC>();
                 NPC rayNpc = null;
                 foreach (var npc in allNpcs)
@@ -494,11 +496,11 @@ namespace ChloesManorMod
                 if (rayNpc != null)
                 {
                     searchTargetComponent = rayNpc;
-                    LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found NPC GameObject named 'Ray'.");
+                    LoggerInstance.Msg($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Found NPC GameObject named 'Ray'.");
                 }
                 else
                 {
-                    LoggerInstance.Error("ModifyEstateAgentChoicesDirectly: Could not find Ray NPC instance via specific component or GameObject name. Aborting choice modification.");
+                    LoggerInstance.Error($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Could not find Ray NPC instance via specific component or GameObject name. Aborting choice modification.");
                     return; // Cannot proceed without Ray
                 }
             }
@@ -511,18 +513,18 @@ namespace ChloesManorMod
 
             if (locationDialogueEvents == null || locationDialogueEvents.Length == 0)
             {
-                LoggerInstance.Warning($"ModifyEstateAgentChoicesDirectly: No NPCEvent_LocationDialogue components found on Ray ('{searchTargetComponent.gameObject.name}') or his children.");
+                LoggerInstance.Warning($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: No NPCEvent_LocationDialogue components found on Ray ('{searchTargetComponent.gameObject.name}') or his children.");
             return;
         }
 
-            LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found {locationDialogueEvents.Length} NPCEvent_LocationDialogue components on '{searchTargetComponent.gameObject.name}'. Checking each...");
+            LoggerInstance.Msg($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Found {locationDialogueEvents.Length} NPCEvent_LocationDialogue components on '{searchTargetComponent.gameObject.name}'. Checking each...");
             foreach (var eventComponent in locationDialogueEvents)
             {
                 // Check if the event component and its DialogueOverride are valid, and if the override name matches
                 if (eventComponent != null && eventComponent.DialogueOverride != null && eventComponent.DialogueOverride.name == TargetDialogueContainerName)
                 {
                     targetEventComponent = eventComponent;
-                    LoggerInstance.Msg($"ModifyEstateAgentChoicesDirectly: Found target event component on '{eventComponent.gameObject.name}' using DialogueOverride '{TargetDialogueContainerName}'.");
+                    LoggerInstance.Msg($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Found target event component on '{eventComponent.gameObject.name}' using DialogueOverride '{TargetDialogueContainerName}'.");
                     break; // Found the correct event
                 }
                 // else if (eventComponent != null) { // Optional: Log skipped events
@@ -533,7 +535,7 @@ namespace ChloesManorMod
 
             if (targetEventComponent == null)
             {
-                LoggerInstance.Error($"ModifyEstateAgentChoicesDirectly: Could not find the specific NPCEvent_LocationDialogue using '{TargetDialogueContainerName}' on Ray after checking all components.");
+                LoggerInstance.Error($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Could not find the specific NPCEvent_LocationDialogue using '{TargetDialogueContainerName}' on Ray after checking all components.");
                 return; // Cannot proceed without the specific event
             }
             // --- End Find Event Component ---
@@ -542,11 +544,11 @@ namespace ChloesManorMod
             DialogueContainer container = targetEventComponent.DialogueOverride; // Use the container *from the specific event instance*!
             if (container == null)
             {
-                LoggerInstance.Error("ModifyEstateAgentChoicesDirectly: Target event component's DialogueOverride is null! Cannot modify.");
+                LoggerInstance.Error($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Target event component's DialogueOverride is null! Cannot modify.");
             return;
         }
 
-            LoggerInstance.Msg($"Modifying choices in the specific DialogueContainer instance (Name: {container.name}, ID: {container.GetInstanceID()}) used by Ray's event.");
+            LoggerInstance.Msg($"{MOD_TAG}: Modifying choices in the specific DialogueContainer instance (Name: {container.name}, ID: {container.GetInstanceID()}) used by Ray's event.");
 
             // Find the specific node within *this container instance* using its GUID
             DialogueNodeData choiceNode = null;
@@ -566,10 +568,10 @@ namespace ChloesManorMod
 
             if (choiceNode == null)
             {
-                LoggerInstance.Error($"Could not find the Property Choice node (GUID: {PropertyChoiceNodeGuid}) within the event's specific container instance ('{container.name}').");
+                LoggerInstance.Error($"{MOD_TAG}: ModifyEstateAgentChoicesDirectly: Could not find the Property Choice node (GUID: {PropertyChoiceNodeGuid}) within the event's specific container instance ('{container.name}').");
                 return;
             }
-            LoggerInstance.Msg($"Found Property Choice node: '{choiceNode.DialogueNodeLabel}' (GUID: {choiceNode.Guid}) within the event's container.");
+            LoggerInstance.Msg($"{MOD_TAG}: Found Property Choice node: '{choiceNode.DialogueNodeLabel}' (GUID: {choiceNode.Guid}) within the event's container.");
 
             // Check if ALREADY modified (on *this* instance) to prevent adding duplicate "manor" choices
             bool alreadyHasManor = false;
@@ -589,13 +591,13 @@ namespace ChloesManorMod
 
             if (alreadyHasManor)
             {
-                LoggerInstance.Msg("Dialogue choices on this specific event container seem to already include 'manor'. Skipping modification.");
+                LoggerInstance.Msg($"{MOD_TAG}: Dialogue choices on this specific event container seem to already include 'manor'. Skipping modification.");
                 dialogueModified = true; // Set flag even if skipped, assumes it's correctly modified
                 return;
             }
             else
             {
-                LoggerInstance.Msg($"Choice node '{choiceNode.DialogueNodeLabel}' does not currently contain 'manor' choice. Proceeding with modification.");
+                LoggerInstance.Msg($"{MOD_TAG}: Choice node '{choiceNode.DialogueNodeLabel}' does not currently contain 'manor' choice. Proceeding with modification.");
             }
 
             // --- 4. Create the New, Complete List of Choices ---
@@ -624,18 +626,18 @@ namespace ChloesManorMod
                 {
                     string manorLabel = (choiceNode.choices[3] != null) ? choiceNode.choices[3].ChoiceLabel : "NULL_CHOICE"; // Manor is 4th item (index 3)
                     string lastLabel = (choiceNode.choices[4] != null) ? choiceNode.choices[4].ChoiceLabel : "NULL_CHOICE"; // Nevermind is 5th item (index 4)
-                    LoggerInstance.Msg($"Successfully OVERWROTE choices for node '{choiceNode.DialogueNodeLabel}' within the event's specific container. New count: {choiceNode.choices.Count}. Manor Label: '{manorLabel}', Last Label: '{lastLabel}'.");
+                    LoggerInstance.Msg($"{MOD_TAG}: Successfully OVERWROTE choices for node '{choiceNode.DialogueNodeLabel}' within the event's specific container. New count: {choiceNode.choices.Count}. Manor Label: '{manorLabel}', Last Label: '{lastLabel}'.");
                     dialogueModified = true; // Set flag on success
                 }
                 else
                 {
                     int currentCount = (choiceNode.choices != null) ? choiceNode.choices.Count : -1; // -1 indicates null array
-                    LoggerInstance.Error($"Assignment failed or resulted in unexpected count! Current count: {currentCount}. Expected 5.");
+                    LoggerInstance.Error($"{MOD_TAG}: Assignment failed or resulted in unexpected count! Current count: {currentCount}. Expected 5.");
                 }
             }
             catch (System.Exception e)
             {
-                LoggerInstance.Error($"Error assigning new choices array to the specific event container: {e}");
+                LoggerInstance.Error($"{MOD_TAG}: Error assigning new choices array to the specific event container: {e}");
                 // Potentially reset dialogueModified flag if error handling requires retry logic?
                 // dialogueModified = false;
             }
@@ -644,21 +646,23 @@ namespace ChloesManorMod
         // --- Method to disable specific GameObjects by path --- 
         private void DisableOriginalManorObjects()
         {
-            MelonLogger.Msg("--- Disabling Original Manor Objects ---");
+            MelonLogger.Msg($"{MOD_TAG}: --- Disabling Original Manor Objects ---");
+            int disabledCount = 0;
             foreach (string path in objectsToDisableBeforeSetup)
             {
                 GameObject objToDisable = GameObject.Find(path);
                 if (objToDisable != null)
                 {   
-                    MelonLogger.Msg($"    - Found and disabling: '{path}'");
+                    MelonLogger.Msg($"{MOD_TAG}:     - Found and disabling: '{path}'");
                     objToDisable.SetActive(false);
+                    disabledCount++;
                 }
                 else 
                 { 
-                     MelonLogger.Warning($"    - Could not find object to disable at path: '{path}'");
+                     MelonLogger.Warning($"{MOD_TAG}:     - Could not find object to disable at path: '{path}'");
                 }
             }
-            MelonLogger.Msg("--- Finished Disabling Objects ---");
+            MelonLogger.Msg($"{MOD_TAG}: --- Finished Disabling Objects ({disabledCount} disabled) ---");
         }
 
         // --- Renamed/Modified Helper: Finds teleporter pairs and stores them ---
@@ -666,11 +670,11 @@ namespace ChloesManorMod
         {
             if (root == null)
             {
-                LoggerInstance.Error("InitializeTeleporterPairs: Cannot initialize teleporters, root object is null.");
+                LoggerInstance.Error($"{MOD_TAG}: InitializeTeleporterPairs: Cannot initialize teleporters, root object is null.");
                 return;
             }
 
-            LoggerInstance.Msg("--- Initializing Teleporter Pairs ---");
+            LoggerInstance.Msg($"{MOD_TAG}: --- Initializing Teleporter Pairs ---");
             teleporterPairs.Clear(); // Clear any old pairs first
 
             // Define the relative paths from the root to the teleporter GameObjects
@@ -695,19 +699,19 @@ namespace ChloesManorMod
                     {
                         // Store the pair
                         teleporterPairs.Add((pos1Transform, pos2Transform));
-                        LoggerInstance.Msg($"  Added teleporter pair: Source='{pos1Transform.name}' -> Target='{pos2Transform.name}' (Parent Group: {path})");
+                        LoggerInstance.Msg($"{MOD_TAG}:   Added teleporter pair: Source='{pos1Transform.name}' -> Target='{pos2Transform.name}' (Parent Group: {path})");
                     }
                     else
                     {
-                        LoggerInstance.Warning($"  Could not find 'Pos1' ({pos1Transform == null}) or 'Pos2' ({pos2Transform == null}) child Transforms under group '{path}'. Skipping this pair.");
+                        LoggerInstance.Warning($"{MOD_TAG}:   Could not find 'Pos1' ({pos1Transform == null}) or 'Pos2' ({pos2Transform == null}) child Transforms under group '{path}'. Skipping this pair.");
                     }
                 }
                 else
                 {
-                    LoggerInstance.Warning($"  Could not find teleporter group Transform at path: '{path}'. Skipping.");
+                    LoggerInstance.Warning($"{MOD_TAG}:   Could not find teleporter group Transform at path: '{path}'. Skipping.");
                 }
             }
-            LoggerInstance.Msg($"--- Finished Initializing Teleporter Pairs. Found {teleporterPairs.Count} pairs. ---");
+            LoggerInstance.Msg($"{MOD_TAG}: --- Finished Initializing Teleporter Pairs. Found {teleporterPairs.Count} pairs. ---");
         }
 
         // --- NEW: Centralized Teleporter Processing Logic ---

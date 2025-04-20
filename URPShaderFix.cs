@@ -99,7 +99,7 @@ namespace ChloesManorMod
         {
             if (rootObject == null)
             {
-                MelonLogger.Error("[URPShaderFix] Provided root GameObject is null. Cannot apply fix.");
+                MelonLogger.Error($"{MainMod.MOD_TAG}: URPShaderFix: Provided root GameObject is null. Cannot apply fix.");
                 return;
             }
 
@@ -107,11 +107,11 @@ namespace ChloesManorMod
             int totalRenderersFixed = 0;
             int totalDecalsFixed = 0;
 
-            if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Starting shader check for '{rootObject.name}'...");
+            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Starting shader check for '{rootObject.name}'...");
 
             // --- 1. Process Renderers ---
             Renderer[] renderers = rootObject.GetComponentsInChildren<Renderer>(true);
-            if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Found {renderers.Length} renderers under '{rootObject.name}'.");
+            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Found {renderers.Length} renderers under '{rootObject.name}'.");
 
             foreach (Renderer rend in renderers)
             {
@@ -120,7 +120,7 @@ namespace ChloesManorMod
                 // Don't process DecalProjector materials here, we'll do it separately
                 if (rend.GetType().FullName == "UnityEngine.Rendering.Universal.DecalProjector")
                 {
-                    if (verboseLogging) MelonLogger.Msg($"   - Skipping Renderer {rend.gameObject.name} as it is a DecalProjector (will be handled separately).");
+                    if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Skipping Renderer {rend.gameObject.name} as it is a DecalProjector (will be handled separately).");
                     continue;
                 }
 
@@ -146,14 +146,14 @@ namespace ChloesManorMod
             }
 
             // --- 2. Process Decal Projectors ---
-            if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Processing DecalProjectors under '{rootObject.name}'...");
+            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Processing DecalProjectors under '{rootObject.name}'...");
             try // Add a try-catch around the whole Decal processing block
             {
                 // --- Use Generic GetComponentsInChildren --- 
                 UnityEngine.Rendering.Universal.DecalProjector[] decalComponents = 
                     rootObject.GetComponentsInChildren<UnityEngine.Rendering.Universal.DecalProjector>(true);
 
-                if (verboseLogging) MelonLogger.Msg($"[URPShaderFix] Found {decalComponents.Length} DecalProjectors using generic GetComponentsInChildren.");
+                if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Found {decalComponents.Length} DecalProjectors using generic GetComponentsInChildren.");
 
                 foreach (UnityEngine.Rendering.Universal.DecalProjector decalProjectorInstance in decalComponents)
                 {
@@ -163,7 +163,7 @@ namespace ChloesManorMod
                     try { currentDecalMat = decalProjectorInstance.material; }
                     catch (System.Exception ex) 
                     { 
-                        MelonLogger.Warning($"[URPShaderFix] Error getting material directly from DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); 
+                        MelonLogger.Warning($"{MainMod.MOD_TAG}: URPShaderFix: Error getting material directly from DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); 
                         continue; // Skip this decal if we can't get its material
                     }
 
@@ -172,7 +172,7 @@ namespace ChloesManorMod
                     {
                         string matName = currentDecalMat?.name ?? "NULL Material";
                         string shaderName = currentDecalMat?.shader?.name ?? "NULL Shader";
-                        MelonLogger.Msg($"    -> Processing Decal '{decalProjectorInstance.gameObject.name}': Material='{matName}', Shader='{shaderName}'");
+                        MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: -> Processing Decal '{decalProjectorInstance.gameObject.name}': Material='{matName}', Shader='{shaderName}'");
                     }
                     // --- 
 
@@ -182,17 +182,17 @@ namespace ChloesManorMod
                     if (ProcessMaterialFix(ref currentDecalMat, targetShaderCache, decalProjectorInstance.gameObject, -1, verboseLogging)) // Use -1 for index as it's not an array
                     {
                         totalDecalsFixed++;
-                        if (currentDecalMat != originalMatInstance) { if (verboseLogging) MelonLogger.Msg($"   - Reassigning modified material instance to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
-                        else { if (verboseLogging) MelonLogger.Msg($"   - Reassigning (potentially modified in-place) material to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
+                        if (currentDecalMat != originalMatInstance) { if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Reassigning modified material instance to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
+                        else { if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Reassigning (potentially modified in-place) material to DecalProjector on '{decalProjectorInstance.gameObject.name}'."); }
 
                         try { decalProjectorInstance.material = currentDecalMat; }
-                        catch (System.Exception ex) { MelonLogger.Error($"[URPShaderFix] Error setting material directly onto DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); }
+                        catch (System.Exception ex) { MelonLogger.Error($"{MainMod.MOD_TAG}: URPShaderFix: Error setting material directly onto DecalProjector on '{decalProjectorInstance.gameObject.name}': {ex.Message}"); }
                     }
                 }
             }
             catch (System.Exception decalEx)
             {
-                 MelonLogger.Error($"[URPShaderFix] Unhandled exception during DecalProjector processing loop: {decalEx.ToString()}");
+                 MelonLogger.Error($"{MainMod.MOD_TAG}: URPShaderFix: Unhandled exception during DecalProjector processing loop: {decalEx.ToString()}");
             }
             // --- End Decal Processing ---
 
@@ -200,11 +200,11 @@ namespace ChloesManorMod
             int totalFixed = totalRenderersFixed + totalDecalsFixed;
             if (totalFixed > 0)
             {
-                MelonLogger.Msg($"[URPShaderFix] Finished. Applied shader fixes to {totalRenderersFixed} renderer material(s) and {totalDecalsFixed} DecalProjector material(s) under '{rootObject.name}'.");
+                MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Finished. Applied shader fixes to {totalRenderersFixed} renderer material(s) and {totalDecalsFixed} DecalProjector material(s) under '{rootObject.name}'.");
             }
             else if (verboseLogging)
             {
-                MelonLogger.Msg($"[URPShaderFix] Finished check under '{rootObject.name}'. No shader changes required based on config.");
+                MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Finished check under '{rootObject.name}'. No shader changes required based on config.");
             }
         }
 
@@ -219,11 +219,11 @@ namespace ChloesManorMod
             string materialIdentifier = $"Material '{mat.name}' on '{ownerName}'" + (materialIndex >= 0 ? $" (Index {materialIndex})" : " (Decal)");
 
             // --- Log Entry --- 
-            if (verboseLogging) MelonLogger.Msg($"      >> ProcessMaterialFix started for {materialIdentifier}");
+            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: >> ProcessMaterialFix started for {materialIdentifier}");
 
             Shader currentShader = mat.shader;
             string currentShaderName = currentShader?.name ?? "NULL";
-            if (verboseLogging) MelonLogger.Msg($"         Current Shader Name: '{currentShaderName}'");
+            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Current Shader Name: '{currentShaderName}'");
 
             ShaderFixConfig matchingConfig = null;
 
@@ -243,43 +243,43 @@ namespace ChloesManorMod
 
             if (matchingConfig == null)
             {
-                if (verboseLogging) MelonLogger.Msg($"         No matching config found for shader '{currentShaderName}'. Skipping fix.");
+                if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: No matching config found for shader '{currentShaderName}'. Skipping fix.");
                 return false;
             }
-            if (verboseLogging) MelonLogger.Msg($"         Found matching config: Problematic='{matchingConfig.ProblematicShaderName}', Target='{matchingConfig.TargetShaderName}'");
+            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Found matching config: Problematic='{matchingConfig.ProblematicShaderName}', Target='{matchingConfig.TargetShaderName}'");
 
 
             // Find target shader (use cache)
             Shader targetShaderInstance = null;
             if (!targetShaderCache.TryGetValue(matchingConfig.TargetShaderName, out targetShaderInstance))
             {
-                if (verboseLogging) MelonLogger.Msg($"         Target shader '{matchingConfig.TargetShaderName}' not in cache. Finding...");
+                if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Target shader '{matchingConfig.TargetShaderName}' not in cache. Finding...");
                 targetShaderInstance = Shader.Find(matchingConfig.TargetShaderName);
                 if (targetShaderInstance != null)
                 {
                     targetShaderCache[matchingConfig.TargetShaderName] = targetShaderInstance;
-                    if (verboseLogging) MelonLogger.Msg($"         Found and cached target shader '{targetShaderInstance.name}'.");
+                    if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Found and cached target shader '{targetShaderInstance.name}'.");
                 }
                 else
                 {
-                    MelonLogger.Error($"[URPShaderFix] Could not find target shader '{matchingConfig.TargetShaderName}' for {materialIdentifier}. Skipping fix.", ownerGO);
+                    MelonLogger.Error($"{MainMod.MOD_TAG}: URPShaderFix: Could not find target shader '{matchingConfig.TargetShaderName}' for {materialIdentifier}. Skipping fix.", ownerGO);
                     return false;
                 }
             }
             else
             {
-                if (verboseLogging) MelonLogger.Msg($"         Found target shader '{matchingConfig.TargetShaderName}' in cache.");
+                if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Found target shader '{matchingConfig.TargetShaderName}' in cache.");
             }
 
             // Check if shader needs changing
             if (currentShader == targetShaderInstance)
             {
-                if (verboseLogging) MelonLogger.Msg($"         Shader already correct for {materialIdentifier}. No change needed.");
+                if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Shader already correct for {materialIdentifier}. No change needed.");
                 return false; // No change needed
             }
 
             // --- Shader needs fixing ---
-            if (verboseLogging) MelonLogger.Msg($"         Attempting shader fix for {materialIdentifier}. From: '{currentShaderName}' To: '{targetShaderInstance.name}'");
+            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Attempting shader fix for {materialIdentifier}. From: '{currentShaderName}' To: '{targetShaderInstance.name}'");
 
             // Store old values before changing shader
             Dictionary<string, Texture> originalTextures = new Dictionary<string, Texture>();
@@ -295,9 +295,9 @@ namespace ChloesManorMod
                     try
                     {
                         originalTextures[originalPropName] = mat.GetTexture(originalPropName);
-                        if (verboseLogging) MelonLogger.Msg($"           Stored Texture['{originalPropName}']: {originalTextures[originalPropName]?.name ?? "NULL"}");
+                        if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Stored Texture['{originalPropName}']: {originalTextures[originalPropName]?.name ?? "NULL"}");
                     }
-                    catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed getting Texture from '{originalPropName}': {e.Message}"); }
+                    catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"{MainMod.MOD_TAG}: URPShaderFix: Failed getting Texture from '{originalPropName}': {e.Message}"); }
                 }
             }
             // Store Colors
@@ -309,9 +309,9 @@ namespace ChloesManorMod
                     try
                     {
                         originalColors[originalPropName] = mat.GetColor(originalPropName);
-                        if (verboseLogging) MelonLogger.Msg($"           Stored Color['{originalPropName}']: {originalColors[originalPropName]}");
+                        if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Stored Color['{originalPropName}']: {originalColors[originalPropName]}");
                     }
-                    catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed getting Color from '{originalPropName}': {e.Message}"); }
+                    catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"{MainMod.MOD_TAG}: URPShaderFix: Failed getting Color from '{originalPropName}': {e.Message}"); }
                 }
             }
             // Store Floats
@@ -323,9 +323,9 @@ namespace ChloesManorMod
                     try
                     {
                         originalFloats[originalPropName] = mat.GetFloat(originalPropName);
-                        if (verboseLogging) MelonLogger.Msg($"           Stored Float['{originalPropName}']: {originalFloats[originalPropName]}");
+                        if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Stored Float['{originalPropName}']: {originalFloats[originalPropName]}");
                     }
-                    catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed getting Float from '{originalPropName}': {e.Message}"); }
+                    catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"{MainMod.MOD_TAG}: URPShaderFix: Failed getting Float from '{originalPropName}': {e.Message}"); }
                 }
             }
 
@@ -333,7 +333,7 @@ namespace ChloesManorMod
             try
             {
                 mat.shader = targetShaderInstance;
-                if (verboseLogging) MelonLogger.Msg($"         -> Assigned target shader '{targetShaderInstance.name}'. Applying properties...");
+                if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: -> Assigned target shader '{targetShaderInstance.name}'. Applying properties...");
 
                 // Apply stored values using TARGET names
                 // Apply Textures
@@ -344,9 +344,9 @@ namespace ChloesManorMod
                         try
                         {
                             mat.SetTexture(kvp.Value, storedTex);
-                            if (verboseLogging) MelonLogger.Msg($"           Applied Texture['{kvp.Value}']: {storedTex?.name ?? "NULL"}");
+                            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Applied Texture['{kvp.Value}']: {storedTex?.name ?? "NULL"}");
                         }
-                        catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed setting Texture to '{kvp.Value}': {e.Message}"); }
+                        catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"{MainMod.MOD_TAG}: URPShaderFix: Failed setting Texture to '{kvp.Value}': {e.Message}"); }
                     }
                 }
                 // Apply Colors
@@ -357,9 +357,9 @@ namespace ChloesManorMod
                         try
                         {
                             mat.SetColor(kvp.Value, storedColor);
-                            if (verboseLogging) MelonLogger.Msg($"           Applied Color['{kvp.Value}']: {storedColor}");
+                            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Applied Color['{kvp.Value}']: {storedColor}");
                         }
-                        catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed setting Color to '{kvp.Value}': {e.Message}"); }
+                        catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"{MainMod.MOD_TAG}: URPShaderFix: Failed setting Color to '{kvp.Value}': {e.Message}"); }
                     }
                 }
                 // Apply Floats
@@ -370,19 +370,19 @@ namespace ChloesManorMod
                         try
                         {
                             mat.SetFloat(kvp.Value, storedFloat);
-                            if (verboseLogging) MelonLogger.Msg($"           Applied Float['{kvp.Value}']: {storedFloat}");
+                            if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: Applied Float['{kvp.Value}']: {storedFloat}");
                         }
-                        catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"     - Failed setting Float to '{kvp.Value}': {e.Message}"); }
+                        catch (System.Exception e) { if (verboseLogging) MelonLogger.Warning($"{MainMod.MOD_TAG}: URPShaderFix: Failed setting Float to '{kvp.Value}': {e.Message}"); }
                     }
                 }
 
-                if (verboseLogging) MelonLogger.Msg($"      << SUCCESS applying shader and properties to {materialIdentifier}.");
+                if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: << SUCCESS applying shader and properties to {materialIdentifier}.");
                 return true; // Material was modified
             }
             catch (System.Exception e)
             {
-                MelonLogger.Error($"     -> FAILED during shader/property update for {materialIdentifier}: {e.Message}", ownerGO);
-                if (verboseLogging) MelonLogger.Msg($"      << FAILED shader/property update for {materialIdentifier}.");
+                MelonLogger.Error($"{MainMod.MOD_TAG}: URPShaderFix: -> FAILED during shader/property update for {materialIdentifier}: {e.Message}", ownerGO);
+                if (verboseLogging) MelonLogger.Msg($"{MainMod.MOD_TAG}: URPShaderFix: << FAILED shader/property update for {materialIdentifier}.");
                 return false; // Modification failed
             }
         }
