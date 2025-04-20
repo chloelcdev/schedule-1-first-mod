@@ -1,13 +1,11 @@
+using MelonLoader;
 using HarmonyLib;
 using Il2CppScheduleOne.Dialogue; // Use base DialogueHandler
 using Il2CppScheduleOne.Property; // Correct namespace
 using Il2CppScheduleOne.Money;    // Correct namespace for MoneyManager
 using Il2CppScheduleOne.NPCs; // For NPC
 using Il2CppScheduleOne.NPCs.Schedules; // For NPCEvent_LocationDialogue
-using MelonLoader;
-using UnityEngine; // For AddListener/RemoveListener
-using System.Collections.Generic; // For HashSet
-using Il2CppSystem; // Need this for Il2CppSystem.Action
+
 
 namespace ChloesManorMod // Your actual mod namespace
 {

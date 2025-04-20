@@ -1,11 +1,6 @@
+using MelonLoader;
 using UnityEngine;
-using MelonLoader; // Or your logging namespace
-using System.Collections.Generic; // <<< NEEDED for Dictionary and List
-// using UnityEngine.Rendering.Universal; // May need this - REMOVED for Il2Cpp compatibility
-using System.Reflection; // Needed for Reflection
-using Il2CppInterop.Runtime; // Needed for Il2CppType.From
-using FluffyUnderware;
-// using Il2CppInterop.Runtime; // Not strictly needed if we use System.Type for AddComponent
+using System.Reflection;
 
 namespace ChloesManorMod
 {
@@ -385,28 +380,6 @@ namespace ChloesManorMod
                 if (verboseLogging) MelonLogger.Msg($"URPShaderFix: << FAILED shader/property update for {materialIdentifier}.");
                 return false; // Modification failed
             }
-        }
-
-        // Helper to find a type by name across all loaded assemblies
-        private static System.Type FindTypeInLoadedAssemblies(string typeFullName)
-        {
-            System.Type foundType = null;
-            foreach (Assembly assembly in System.AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    foundType = assembly.GetType(typeFullName);
-                    if (foundType != null)
-                    {
-                        return foundType; // Found it
-                    }
-                }
-                catch
-                {
-                    // Ignore assemblies that throw errors on GetType (e.g., dynamic assemblies)
-                }
-            }
-            return null; // Not found
         }
 
         // Helper to copy properties via Reflection (keeping for now, might be useful elsewhere)

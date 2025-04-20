@@ -4,14 +4,11 @@ using UnityEngine.AI;
 using System.Reflection;
 using Il2CppInterop.Runtime.InteropTypes.Arrays; // For Il2CppReferenceArray<>
 using Il2CppScheduleOne.Property;
-using Il2CppScheduleOne.PlayerScripts;
 using Il2CppScheduleOne.Dialogue; // For DialogueContainer, DialogueNodeData, DialogueChoiceData
 using Il2CppScheduleOne.NPCs; // For NPC base class and potentially Ray
 using Il2CppScheduleOne.NPCs.Schedules; // For NPCEvent_LocationDialogue
 using Unity.AI.Navigation;
 using System.Collections; // Required for IEnumerator
-using UnityEngine.Rendering.Universal;
-using System.Collections.Generic; // Needed for List<T> and Dictionary<K,V>
 
 // === FishNet using Statements ===
 // You MUST add a reference to Il2CppFishNet.Runtime.dll in Visual Studio
@@ -31,10 +28,10 @@ using Ray = Il2CppScheduleOne.NPCs.CharacterClasses.Ray; // Assuming Ray is a su
 public static class BuildInfo
 {
     public const string Name = "Manor Mod";
-    public const string Description = "Adds missing setup components to the Manor property.";
+    public const string Description = "Finishes the missing touches to make the Manor fully functional/playable.";
     public const string Author = "Chloe";
     public const string Company = null;
-    public const string Version = "2.1.3";
+    public const string Version = "0.8.4";
     public const string DownloadLink = null;
 }
 

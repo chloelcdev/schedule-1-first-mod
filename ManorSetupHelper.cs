@@ -1,22 +1,14 @@
 // ManorSetupHelper.cs - Static helper class for configuration
 
-using Il2CppSystem.Collections.Generic;
-using System.Linq;
-using Il2CppInterop.Runtime;
+using MelonLoader;
 using Il2CppScheduleOne.Property;
 using Il2CppScheduleOne.Delivery;
-using Il2CppScheduleOne.Persistence;
 using Il2CppScheduleOne.Map;
 using Il2CppScheduleOne.Interaction;
 using Il2CppScheduleOne.Tiles;
-using Il2CppSystem;
-using UnityEngine.Events;
-using System.Reflection;
-using MelonLoader;
+
 using Il2CppScheduleOne.Misc;
 using UnityEngine;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using Il2CppScheduleOne.Employees;
 
 
 // Use the same namespace as MainMod
@@ -192,18 +184,6 @@ namespace ChloesManorMod
                 if (t.gameObject.name == childName) return t;
             }
             return null;
-        }
-
-        // --- Helper Function to Read Protected Field (for logging) ---
-        private static string GetProtectedStringField(Component target, string fieldName)
-        {
-             if (target == null) return null;
-             FieldInfo fieldInfo = target.GetType().GetField(
-                 fieldName,
-                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic
-             );
-             if (fieldInfo == null || fieldInfo.FieldType != typeof(string)) return null;
-             try { return fieldInfo.GetValue(target) as string; } catch { return null; }
         }
 
         // --- NEW: Combined Switch/Toggleable Logic ---

@@ -2,11 +2,6 @@ using UnityEngine;
 using Il2CppScheduleOne.Property;
 using Il2CppScheduleOne.Delivery;
 using Il2CppScheduleOne.Persistence;
-using Il2CppSystem;
-using Il2CppInterop;
-using Il2CppInternal;
-using Il2CppMono;
-using Il2Cpp;
 
 public class ManorSetup_Chloe : MonoBehaviour
 {

@@ -1,17 +1,9 @@
 using MelonLoader;
-using System;
-using System.Collections.Generic;
-using System.Reflection;
-using Il2CppInterop.Runtime;
 using UnityEngine;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine.Rendering.Universal;
-using UnityEngine.UI; // Example if smuggling Sprites via Image
-using ComponentRestoration.Data; // ADDED using for shared data structures
-
-using Unity.AI.Navigation; // <-- ADDED
-using UnityEngine.AI;
+using ComponentRestoration.Data;
 
 namespace ChloesManorMod
 {
@@ -36,9 +28,6 @@ namespace ChloesManorMod
         private static void AddMapping(bool verboseLogging, string jsonTypeName,
                                        Action<GameObject, ComponentData, bool, int> applyAction)
         {
-            // We don't necessarily need the System.Type here anymore if the action handles everything
-            // System.Type runtimeType = FindTypeInLoadedAssemblies(jsonTypeName);
-            // if (runtimeType != null) {
             var mapping = new ComponentTypeMapping
             {
                 JsonTypeName = jsonTypeName,
@@ -271,17 +260,6 @@ namespace ChloesManorMod
             }
         }
 
-        // Helper copy-pasted from URPShaderFix - needed here too
-        private static System.Type FindTypeInLoadedAssemblies(string typeFullName)
-        {
-            System.Type foundType = null;
-            foreach (Assembly assembly in System.AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try { foundType = assembly.GetType(typeFullName); if (foundType != null) return foundType; }
-                catch { /* Ignore */ }
-            }
-            return null;
-        }
 
         // --- NEW Helper Function for Property Retrieval and Conversion ---
         private static T GetValue<T>(Dictionary<string, object> properties, string key, bool verbose, T defaultValue = default)
@@ -435,6 +413,6 @@ namespace ChloesManorMod
            // ... existing code ...
         }
 
-        // ... (Smuggling Helpers, BuildPathLookup, FindTypeInLoadedAssemblies) ...
+        // ... (Smuggling Helpers, BuildPathLookup) ...
     }
 }
