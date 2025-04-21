@@ -10,7 +10,6 @@ C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Il2Cppmscorlib.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.CoreModule.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.dll
-C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.Il2CppImageConversionManager.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.UI.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.UIModule.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.PhysicsModule.dll
@@ -41,7 +40,6 @@ C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.TextCoreFontEngineModule.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.SubsystemsModule.dll
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\Il2CppInterop.Runtime.xml
-C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\bin\Debug\net6\UnityEngine.Il2CppImageConversionManager.pdb
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj\Debug\net6\ChloesManorMod.csproj.AssemblyReference.cache
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj\Debug\net6\ChloesManorMod.GeneratedMSBuildEditorConfig.editorconfig
 C:\Users\chloe\Documents\Unity Projects\TheEngine\schedule-1-smart-employees\obj\Debug\net6\ChloesManorMod.AssemblyInfoInputs.cache

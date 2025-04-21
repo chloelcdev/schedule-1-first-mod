@@ -69,9 +69,6 @@
 		<Reference Include="UnityEngine.CoreModule">
 		  <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Il2CppAssemblies\UnityEngine.CoreModule.dll</HintPath>
 		</Reference>
-		<Reference Include="UnityEngine.Il2CppImageConversionManager">
-		  <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\net6\UnityEngine.Il2CppImageConversionManager.dll</HintPath>
-		</Reference>
 		<Reference Include="UnityEngine.InputLegacyModule">
 		  <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\Schedule I\MelonLoader\Il2CppAssemblies\UnityEngine.InputLegacyModule.dll</HintPath>
 		</Reference>

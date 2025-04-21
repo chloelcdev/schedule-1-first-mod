@@ -25,7 +25,6 @@
           "UnityEngine.AnimationModule": "0.0.0.0",
           "UnityEngine.CoreModule": "0.0.0.0",
           "UnityEngine": "0.0.0.0",
-          "UnityEngine.Il2CppImageConversionManager": "0.7.0.0",
           "UnityEngine.InputLegacyModule": "0.0.0.0",
           "UnityEngine.InputModule": "0.0.0.0",
           "UnityEngine.JSONSerializeModule": "0.0.0.0",
@@ -182,14 +181,6 @@
           "UnityEngine.dll": {
             "assemblyVersion": "0.0.0.0",
             "fileVersion": "0.0.0.0"
-          }
-        }
-      },
-      "UnityEngine.Il2CppImageConversionManager/0.7.0.0": {
-        "runtime": {
-          "UnityEngine.Il2CppImageConversionManager.dll": {
-            "assemblyVersion": "0.7.0.0",
-            "fileVersion": "0.7.0.0"
           }
         }
       },
@@ -509,11 +500,6 @@
       "sha512": ""
     },
     "UnityEngine/0.0.0.0": {
-      "type": "reference",
-      "serviceable": false,
-      "sha512": ""
-    },
-    "UnityEngine.Il2CppImageConversionManager/0.7.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""

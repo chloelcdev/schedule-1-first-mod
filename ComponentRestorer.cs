@@ -330,7 +330,7 @@ namespace ChloesManorMod
             }
             else
             {
-                if (verbose) MelonLogger.Msg($"ComponentRestorer: Found existing DecalProjector on '{targetGO.name}'.");
+                //if (verbose) MelonLogger.Msg($"ComponentRestorer: Found existing DecalProjector on '{targetGO.name}'.");
             }
 
             // Apply properties directly

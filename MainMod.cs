@@ -133,49 +133,6 @@ namespace ChloesManorMod
 
             LoadPrefabsFromIl2CppBundle();
             SpawnAndConfigurePrefab();
-
-            // --- Debug: Check for NavMeshLink after spawning ---
-            MelonLogger.Msg($"--- Checking for NavMeshLink on DoorLinkAttempt ---");
-            // Find the child object directly using transform.Find
-            GameObject doorLinkGO = null;
-            string relativePath = "AtTheProperty/Extra Navigation/DoorLinkAttempt";
-            if (spawnedInstanceRoot != null)
-            {
-                Transform doorLinkTransform = spawnedInstanceRoot.transform.Find(relativePath);
-                if (doorLinkTransform != null)
-                {
-                    doorLinkGO = doorLinkTransform.gameObject;
-                }
-            }
-
-            if (doorLinkGO != null)
-            {
-                MelonLogger.Msg($"Found GameObject: '{doorLinkGO.name}' using relative path: '{relativePath}'");
-                NavMeshLink navLink = doorLinkGO.GetComponent<NavMeshLink>();
-                if (navLink != null)
-                {
-                    MelonLogger.Msg($"-> Found NavMeshLink component!");
-                    // Optional: Log specific properties if needed
-                    // MelonLogger.Msg($"     - StartPoint: {navLink.m_StartPoint}");
-                    // MelonLogger.Msg($"     - EndPoint: {navLink.m_EndPoint}");
-                    // MelonLogger.Msg($"     - AgentTypeID: {navLink.m_AgentTypeID}");
-                }
-                else
-                {
-                     MelonLogger.Warning($"-> NavMeshLink component NOT FOUND on this GameObject!");
-                     MelonLogger.Warning($"-> Printing components!");
-                     foreach (Component component in doorLinkGO.GetComponents<Component>())
-                     {
-                        MelonLogger.Warning($"-> {component.name}: {component.GetType().Name}");
-                     }
-                }
-            }
-            else
-            {
-                MelonLogger.Error($"Could not find GameObject for NavMeshLink debug using relative path: '{relativePath}' within '{spawnedInstanceRoot?.name ?? "NULL"}'");
-            }
-            MelonLogger.Msg($"--- Finished NavMeshLink Check ---");
-            // --- End Debug ---
         }
 
         private void LoadAssetBundleViaManager()
